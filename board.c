@@ -31,6 +31,8 @@ void print_board(char game[9]){
 int main(){
     char game[9];
     int i, j;
+
+    // TODO: Retrieve game[9] from server
     for (i = 0; i < 9; i++)
         game[i] = ' ';
 
@@ -51,6 +53,7 @@ int main(){
                 validMove = false;
                 continue;
             }
+            // TODO: send move signal to server
             game[(buf - '0') - 1] = 'X';
         }
     } while (!isDone(game));
