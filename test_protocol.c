@@ -14,5 +14,11 @@ int main (){
     int wait_len = wait_game(&buf, buf_len);
     printf("message|wait|length %d:\t\t%s\n", wait_len, buf);
     free(buf);
+
+    buf = malloc(sizeof(char));
+    buf_len = 1;
+    int begin_len = begin(&buf, buf_len, 'X', "Jotaro", 6);
+    printf("message|begin|length %d:\t\t%s\n", begin_len, buf);
+    free(buf);
     
 }

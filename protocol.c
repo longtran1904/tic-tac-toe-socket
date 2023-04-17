@@ -79,5 +79,32 @@ int wait_game(char** buf, int buf_len){
     line_pos = append(buf, &buf_len, code, 7);
     return line_pos;
 }
-int begin(char** buf, int buf_len, char role, char* name, int length_name);
+int begin(char** buf, int buf_len, char role, char* name, int length_name){
+    char* code = "BEGN|";
+    int msg_length = 2 + length_name + (length_name ? 1 : 0);
+
+    char* numBuf = malloc(sizeof(char));
+    int numBuf_len = 1;    
+    line_pos = 0;
+
+    // get string of length of message
+    int num_len = NumToWord(&numBuf, numBuf_len, msg_length); 
+
+    char roles[2];
+    roles[0] = role;
+    roles[1] = '|';
+
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN);
+    line_pos = append(buf, &buf_len, numBuf, num_len);
+    line_pos = append(buf, &buf_len, roles, 2);
+    if (msg_length > 0){
+        line_pos = append(buf, &buf_len, name, length_name);
+        char end = '|';
+        line_pos = append(buf, &buf_len, &end, 1);
+    }    
+
+    free(numBuf);
+    return line_pos;
+}
 int move(char** buf, int buf_len, char role, pair p);
