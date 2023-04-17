@@ -7,5 +7,8 @@ client: ttt.c
 server: ttts.c
 	$(CC) $(CFLAGS) $< -DDEBUG=1 -o server
 
+protocol: test_protocol.c protocol.c
+	$(CC) $(CFLAGS) $^ -o test
+
 clean: 
-	rm -f -r server client *.dSYM
+	rm -f -r server client test *.dSYM
