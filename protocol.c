@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include "protocol.h"
 #define CODELEN 5
+#define BOARDLEN 9
 
 #ifndef DEBUG
     #define DEBUG 0
@@ -21,6 +22,10 @@ static int append(char** string, int* len, char* append, int append_len){
 }
 
 static int NumToWord(char** word, int word_len, int number){
+    if (number == 0){
+        char zero = '0';
+        line_pos = append(word, &word_len, &zero, 1);
+    }
     while (number){
         char num = number % 10 + '0';
         line_pos = append(word, &word_len, &num, 1);
@@ -68,6 +73,8 @@ int play(char** buf, int buf_len, char* name, int length){
     }   
 
     free(numBuf);
+    
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 
 
@@ -77,6 +84,8 @@ int wait_game(char** buf, int buf_len){
     char code[7] = "WAIT|0|";
     line_pos = 0;
     line_pos = append(buf, &buf_len, code, 7);
+
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 }
 int begin(char** buf, int buf_len, char role, char* name, int length_name){
@@ -105,6 +114,75 @@ int begin(char** buf, int buf_len, char role, char* name, int length_name){
     }    
 
     free(numBuf);
+
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 }
-int move(char** buf, int buf_len, char role, pair p);
+int move(char** buf, int buf_len, char role, pair p){
+    if (role != 'X' && role != 'O') {
+        printf("Wrong role character");
+        return -1;
+    }
+    if (p.x < 1 || p.x > 3 || p.y < 1 || p.y > 3){
+        printf("position pair out of range [3,3]!");
+        return -1;
+    }
+    char* code = "MOVE|";
+    char roles[2] = {role, '|'};
+    char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
+
+    int msg_length = CODELEN + 2 + 4;
+    char* numBuf = malloc(sizeof(char));
+    int numBuf_len = 1;
+    line_pos = 0;
+    // get string of length of message
+    int num_len = NumToWord(&numBuf, numBuf_len, msg_length);
+
+    // appending to get protocol message
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN); // code
+    line_pos = append(buf, &buf_len, numBuf, num_len); // length field
+    line_pos = append(buf, &buf_len, roles, 2);
+    line_pos = append(buf, &buf_len, pos, 4);
+    
+    free(numBuf);
+
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    return line_pos;
+}
+
+int move_board(char** buf, int buf_len, char role, pair p, char* board){
+    if (role != 'X' && role != 'O') {
+        printf("Wrong role character");
+        return -1;
+    }
+    if (p.x < 1 || p.x > 3 || p.y < 1 || p.y > 3){
+        printf("position pair out of range [3,3]!");
+        return -1;
+    }
+    char* code = "MOVD|";
+    char roles[2] = {role, '|'};
+    char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
+
+    int msg_length = CODELEN + 2 + 4;
+    char* numBuf = malloc(sizeof(char));
+    int numBuf_len = 1;
+    line_pos = 0;
+    // get string of length of message
+    int num_len = NumToWord(&numBuf, numBuf_len, msg_length);
+
+    // appending to get protocol message
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN); // code
+    line_pos = append(buf, &buf_len, numBuf, num_len); // length field
+    line_pos = append(buf, &buf_len, roles, 2);
+    line_pos = append(buf, &buf_len, pos, 4);
+    line_pos = append(buf, &buf_len, board, BOARDLEN);
+    char end = '|';
+    line_pos = append(buf, &buf_len, &end, 1);
+    
+    free(numBuf);
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    return line_pos;
+    
+}
