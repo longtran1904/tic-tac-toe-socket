@@ -46,4 +46,10 @@ int main (){
     printf("message|begin|length %d:\t\t%s\n", begin_len, buf);
     free(buf);
 
+    // invalid message
+    buf = malloc(sizeof(char));
+    buf_len = 1;
+    int invalid_len = invalid(&buf, buf_len, "Warning!!! invalid reason", 25);   
+    printf("message|play|length %d:\t\t%s\n", invalid_len, buf);
+    free(buf); 
 }

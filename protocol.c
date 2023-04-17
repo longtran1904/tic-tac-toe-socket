@@ -186,3 +186,29 @@ int move_board(char** buf, int buf_len, char role, pair p, char* board){
     return line_pos;
     
 }
+
+int invalid(char** buf, int buf_len, char* reason, int reason_length){
+   char* code = "INVL|";
+    int msg_length =  reason_length + (reason_length ? 1 : 0);
+
+    char* numBuf = malloc(sizeof(char));
+    int numBuf_len = 1;    
+    line_pos = 0;
+
+    // get string of length of message
+    int num_len = NumToWord(&numBuf, numBuf_len, msg_length); 
+
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN);
+    line_pos = append(buf, &buf_len, numBuf, num_len);
+    if (msg_length > 0){
+        line_pos = append(buf, &buf_len, reason, reason_length);
+        char end = '|';
+        line_pos = append(buf, &buf_len, &end, 1);
+    }    
+
+    free(numBuf);
+
+    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    return line_pos; 
+}
