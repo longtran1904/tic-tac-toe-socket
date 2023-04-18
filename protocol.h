@@ -18,8 +18,8 @@ enum game_state {WIN, LOSE, DRAW};
     int invalid(char** buf, int buf_len, char* reason, int reason_length);
 
     // Game behaviors
-    int draw(char** buf, int buf_len, enum draw_state);
-    int over(char** buf, int buf_len, enum game_state);
+    int draw(char** buf, int buf_len, enum draw_state state);
+    int over(char** buf, int buf_len, enum game_state state, char* win_reason, int win_length);
 
 // Deciphering Messages
     void decipher(char* msg, int msg_len);

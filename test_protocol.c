@@ -52,4 +52,20 @@ int main (){
     int invalid_len = invalid(&buf, buf_len, "Warning!!! invalid reason", 25);   
     printf("message|play|length %d:\t\t%s\n", invalid_len, buf);
     free(buf); 
+
+    // draw message
+    buf = malloc(sizeof(char));
+    buf_len = 1;
+    int draw_len = draw(&buf, buf_len, SUGGEST);   
+    printf("message|play|length %d:\t\t%s\n", draw_len, buf);
+    free(buf); 
+
+    // over message
+    buf = malloc(sizeof(char));
+    buf_len = 1;
+    char* reason = "this is a valid reason for game over!";
+    int reason_len = 37;
+    int over_len = over(&buf, buf_len, WIN, reason, reason_len);   
+    printf("message|play|length %d:\t\t%s\n", over_len, buf);
+    free(buf); 
 }

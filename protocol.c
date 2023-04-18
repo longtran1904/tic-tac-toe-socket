@@ -74,7 +74,7 @@ int play(char** buf, int buf_len, char* name, int length){
 
     free(numBuf);
     
-    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    if (line_pos < buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 
 
@@ -115,7 +115,7 @@ int begin(char** buf, int buf_len, char role, char* name, int length_name){
 
     free(numBuf);
 
-    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    if (line_pos < buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 }
 int move(char** buf, int buf_len, char role, pair p){
@@ -147,7 +147,7 @@ int move(char** buf, int buf_len, char role, pair p){
     
     free(numBuf);
 
-    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    if (line_pos < buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
 }
 
@@ -182,7 +182,7 @@ int move_board(char** buf, int buf_len, char role, pair p, char* board){
     line_pos = append(buf, &buf_len, &end, 1);
     
     free(numBuf);
-    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    if (line_pos < buf_len) (*buf)[line_pos] = '\0';
     return line_pos;
     
 }
@@ -209,6 +209,69 @@ int invalid(char** buf, int buf_len, char* reason, int reason_length){
 
     free(numBuf);
 
-    if (line_pos <= buf_len) (*buf)[line_pos] = '\0';
+    if (line_pos < buf_len) (*buf)[line_pos] = '\0';
     return line_pos; 
+}
+
+int draw(char** buf, int buf_len, enum draw_state state){
+    char code[5] = "DRAW|";
+    char length[2] = "2|";
+    char mode[2];
+    switch (state){
+        case SUGGEST:
+            mode[0] = 'S'; mode[1] = '|'; break;
+        case ACCEPT:
+            mode[0] = 'A'; mode[1] = '|'; break;
+        case REJECT:
+            mode[0] = 'R'; mode[1] = '|'; break;
+    }    
+
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN);
+    line_pos = append(buf, &buf_len, length, 2);
+    line_pos = append(buf, &buf_len, mode, 2);
+
+    if (line_pos < buf_len)
+        (*buf)[line_pos] = '\0';
+
+    return line_pos;
+
+
+}
+int over(char** buf, int buf_len, enum game_state state, char* win_reason, int win_length){
+    char* code = "OVER|";
+    
+    char* mode;
+    switch (state){
+        case SUGGEST:
+            mode = "W|";
+            break;
+        case ACCEPT:
+            mode = "L|";
+            break;
+        case REJECT:
+            mode = "D|";
+            break;
+    }
+
+    int msg_length = 2 + win_length + (win_length > 0 ? 1 : 0);
+    char* numBuf = malloc(sizeof(char));
+    int numBuf_len = 1;    
+    line_pos = 0;
+
+    // get string of length of message
+    int num_len = NumToWord(&numBuf, numBuf_len, msg_length); 
+
+    line_pos = 0;
+    line_pos = append(buf, &buf_len, code, CODELEN);
+    line_pos = append(buf, &buf_len, numBuf, num_len);
+    line_pos = append(buf, &buf_len, mode, 2);
+    line_pos = append(buf, &buf_len, win_reason, win_length);
+    char end = '|';
+    line_pos = append(buf, &buf_len, &end, 1);
+
+    if (line_pos < buf_len)
+        (*buf)[line_pos] = '\0';
+
+    return line_pos;
 }
