@@ -17,7 +17,9 @@ typedef struct message {
 
 typedef enum {
     SUCCESS,
+    INCOMPLETE_MSG,
     BAD_FORMAT, 
+    BAD_SIZE_FLD,
     BAD_CODE_FLD,
     BAD_NAME_FLD,
     BAD_ROLE_FLD,
@@ -69,6 +71,13 @@ void populate_over(char *fields, int fields_len, message *result);
 // Printing parsing errors
 char *get_parse_err_val( msg_parse_stat stat );
 
-// returns a pointer to a single message from buf and sets msg_size appropriately
-// IF fails: returns NULL and sets parsing_status to one of 'enum msg_parse_stat'
-char *grab_msg_shift_buf( char *buf, int buf_len, int *msg_size );
+
+
+// checks that msg_size is what it claims to be and that message ends in '|' 
+// returns a pointer to said message if the above holds true and set msg_size and buf_start
+// IF the above fails: returns NULL and sets parsing_status to one of 'enum msg_parse_stat'
+// NOTE: if the message is incomplete, returns NULL and sets parsing_status to INCOMPLETE_MSG 
+// to signify that we need to call read again to recieve a complete message
+// !!! IF WE RECIEVE INCOMPLETE_MSG, WE MUST COMPOUND buf_len WITH EACH CALL !!!
+// NOTE: the pointer returned must be freed
+char *grab_msg_shift_buf( char *buf, int buf_len, int *msg_size, int *buf_start);

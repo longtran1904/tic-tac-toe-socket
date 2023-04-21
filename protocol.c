@@ -275,3 +275,341 @@ int over(char** buf, int buf_len, enum game_state state, char* win_reason, int w
 
     return line_pos;
 }
+
+
+
+
+void populate_play(char *fields, int fields_len, message *result) {
+    parsing_status = SUCCESS;
+    int count = 0;
+
+    if ( fields_len < 2 ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    // find next '|'
+    while ( count < fields_len && fields[count] != '|' ) { count++; }
+    if ( count < fields_len-1 || fields_len-1 > 100 ) { // there is a bar in the name OR the name is too long
+	parsing_status = BAD_NAME_FLD;
+	return;
+    } 
+
+    memcpy(result->name, fields, fields_len-1);
+    result->name[fields_len-1] = '\0';
+}
+
+void set_role( char *fields, int fields_len, message *result ) {
+    parsing_status = SUCCESS;
+    
+    if ( fields[1] != '|' ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    char role = fields[0];
+    
+    if ( role == 'X' || role == 'O' ) {
+	result->role = role;
+    } // role char is NOT 'X' or 'O'
+    else {
+	parsing_status = BAD_ROLE_FLD;
+	return;
+    }
+}
+
+void populate_begn(char *fields, int fields_len, message *result) {
+    parsing_status = SUCCESS;
+    int count = 2;
+
+    if ( fields_len < 4 ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    set_role( fields, fields_len, result );
+    if ( parsing_status != SUCCESS ) return; // set_role failed
+
+    // find next '|'
+    while ( count < fields_len && fields[count] != '|' ) { count++; }
+    if ( count < fields_len-1 || (fields_len-3) > 100 ) { // there is a bar in the name OR the name is too long
+	parsing_status = BAD_NAME_FLD;
+	return;
+    } 
+
+    memcpy(result->name, fields+2, fields_len-3);
+    result->name[fields_len-3] = '\0';
+}
+
+void set_pos( char *fields, int fields_len, message *result ) {
+    if ( fields[3] != ',' ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    int pos0 = (int) (fields[2] - '0'); 
+    int pos1 = (int) (fields[4] - '0');
+    if ( pos0 < 1 || pos0 > 3 || pos1 < 1 || pos1 > 3 ) {
+	parsing_status = BAD_POSITION_FLD;
+	return; // incorrect ints present
+    }
+
+    result->position.x = pos0;
+    result->position.y = pos1;
+}
+
+
+void populate_move(char *fields, int fields_len, message *result) {
+    parsing_status = SUCCESS;
+
+    if ( fields_len != 12 ) {
+	parsing_status = BAD_FORMAT;
+	return; // incorrect message length
+    }
+
+    set_role( fields, fields_len, result );
+    if ( parsing_status != SUCCESS ) return; // set_role failed
+
+    set_pos( fields, fields_len, result );
+}
+    
+void populate_movd(char *fields, int fields_len, message *result) {
+    parsing_status = SUCCESS;
+
+    if ( fields_len != 16 ) {
+	parsing_status = BAD_FORMAT;
+	return; // incorrect message length
+    }
+
+    set_role( fields, fields_len, result );
+    if ( parsing_status != SUCCESS ) return; // set_role failed
+
+    set_pos( fields, fields_len, result );
+    if ( parsing_status != SUCCESS ) return; // set_pos failed
+
+    int i = 6, j = 0;
+    while ( i < fields_len-1 ) {
+	char c = fields[i++];
+	if ( c != 'X' && c != 'O' && c != '.' ) {
+	    parsing_status = BAD_BOARD_FLD;
+	    return; // incorrect chars present
+	}
+	result->board[j++] = c;
+    }
+}
+
+void populate_invl(char *fields, int fields_len, message *result) {
+    msg_parse_stat status = SUCCESS;
+
+    if ( fields_len < 2 ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    if ( fields_len-1 > 100 ) {
+	parsing_status = BAD_REASON_FLD;
+	return; // reason is too long
+    } 
+
+    memcpy(result->reason, fields, fields_len-1);
+    result->reason[fields_len-1] = '\0';
+}
+
+void populate_draw(char *fields, int fields_len, message *result) {
+    msg_parse_stat status = SUCCESS;
+
+    if ( fields_len != 2 ) {
+	parsing_status = BAD_FORMAT;
+	return; // incorrect length
+    }
+
+    char c = fields[0];
+
+    if ( c != 'S' && c != 'A' && c != 'R' ) {
+	parsing_status = BAD_MSG_FLD;
+	return;	// incorrect chars present
+    }
+
+    result->msg = c;
+}
+
+void populate_over(char *fields, int fields_len, message *result) {
+    msg_parse_stat status = SUCCESS;
+
+    if ( fields_len < 3 ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    char c = fields[0];
+
+    if ( c != 'W' && c != 'L' && c != 'D' ) {
+	parsing_status = BAD_OUTCOME_FLD;
+	return;	// incorrect chars present
+    }
+
+    if ( fields[1] != '|' ) {
+	parsing_status = BAD_FORMAT;
+	return;
+    }
+
+    result->outcome = c;
+
+    if ( fields_len-3 > 100 ) {
+	parsing_status = BAD_REASON_FLD;
+	return; // reason is too long
+    } 
+
+    memcpy(result->reason, fields+2, fields_len-3);
+    result->reason[fields_len-3] = '\0';
+}
+
+char *get_parse_err_val( msg_parse_stat stat ) {
+    switch (stat) {
+	case SUCCESS: return "SUCCESS";
+	case BAD_FORMAT: return "BAD_FORMAT";
+	case BAD_CODE_FLD: return "BAD_CODE_FLD";
+	case BAD_NAME_FLD: return "BAD_NAME_FLD";
+	case BAD_ROLE_FLD: return "BAD_ROLE_FLD";
+	case BAD_POSITION_FLD: return "BAD_POSITION_FLD";
+	case BAD_BOARD_FLD: return "BAD_BOARD_FLD";
+	case BAD_REASON_FLD: return "BAD_REASON_FLD";
+	case BAD_MSG_FLD: return "BAD_MSG_FLD";
+	case BAD_OUTCOME_FLD: return "BAD_OUTCOME_FLD";
+    }
+}
+
+// checks that msg_size is what it claims to be and that message ends in '|' 
+// returns a pointer to said message if the above holds true and set msg_size and buf_start
+// IF the above fails: returns NULL and sets parsing_status to one of 'enum msg_parse_stat'
+// NOTE: if the message is incomplete, returns NULL and sets parsing_status to INCOMPLETE_MSG 
+// to signify that we need to call read again to recieve a complete message
+// !!! IF WE RECIEVE INCOMPLETE_MSG, WE MUST COMPOUND buf_len WITH EACH CALL !!!
+// NOTE: the pointer returned must be freed
+char *grab_msg_shift_buf( char *buf, int buf_len, int *msg_size, int *buf_start) {
+    parsing_status = SUCCESS;
+    *buf_start = 0;
+
+    // there is less than one message in buf
+    if ( buf_len < 7 ) {
+	parsing_status = INCOMPLETE_MSG;
+	*buf_start = buf_len;
+	return NULL;
+    }
+
+    if ( buf[4] != '|' ) {
+	parsing_status = BAD_FORMAT;
+	return NULL;
+    }
+
+    // get message size
+    int count = 5;
+    while ( (count < buf_len) && (buf[count] != '|') ) { count++; }
+    
+    //check if we have complete size field
+    if ( count == buf_len && buf[count] != '|' ) {
+	if ( count > 7 ) { // invalid length: must be < 255 -> 3 or less chars
+	    parsing_status = BAD_SIZE_FLD;
+	    return NULL;
+	} // length field could be incomplete
+	else {
+	    parsing_status = INCOMPLETE_MSG;
+	    *buf_start = buf_len;
+	    return NULL;
+	}
+    }
+
+    // grab size
+    int num_chars_sz = count-5;
+    char size_str[num_chars_sz+1];
+    memcpy(size_str, buf+5, num_chars_sz);
+    size_str[num_chars_sz] = '\0';
+    int size = atoi(size_str);
+    *msg_size = size;
+
+    int expct_msg_len = 5+num_chars_sz+1+size;
+
+    // there is less than one message in buf
+    if ( expct_msg_len > buf_len ) {
+	parsing_status = INCOMPLETE_MSG;
+	*buf_start = buf_len;
+	return NULL;
+    } // there is at least one message in buf 
+    else {
+	// check if message ends in '|'
+	if ( buf[expct_msg_len-1] != '|' ) {
+	    parsing_status = BAD_FORMAT;
+	    return NULL;
+	}
+
+	char *msg = malloc(expct_msg_len);
+	memcpy(msg, buf, expct_msg_len);
+	// there is exactly one message in buffer
+	if ( expct_msg_len == buf_len ) {
+	    return msg;
+	} // there is more than one message in buf: we need to shift buf 
+	else {
+	    memmove(buf, buf+expct_msg_len, buf_len-expct_msg_len);
+	    *buf_start = buf_len-expct_msg_len; 
+	    return msg;
+	}
+    }
+}
+
+// parses message into 'struct message' and returns a pointer to said struct
+// NOTE: the pointer returned must be freed
+// IF parsing fails: returns NULL and sets parsing_status to one of 'enum msg_parse_stat'
+message *parse_msg(char* msg_inp, int msg_size) {
+    parsing_status = SUCCESS;
+
+    //printf("msg_size: %d\n", msg_size);
+
+    message *result = malloc( sizeof(message) );
+    if ( msg_inp[4] == '|' ) {
+	memcpy(result->code, msg_inp, 4);
+	result->code[4] = '\0';
+    } // invalid message format
+    else {
+	parsing_status = BAD_FORMAT;
+	return NULL;
+    }
+
+    char msg_code[5];
+    strcpy(msg_code, result->code);
+
+    if ( strcmp(msg_code, "RSGN") == 0 || strcmp(msg_code, "WAIT") == 0 ) {
+	return result;
+    }
+
+    // skip the size field
+    int count = 5;
+    while ( msg_inp[count] != '|' ) { count++; }
+    char *msg_fields = &msg_inp[count+1];
+
+    if ( strcmp(msg_code, "PLAY") == 0 ) {
+	populate_play(msg_fields, msg_size, result);
+    } 
+    else if ( strcmp(msg_code, "BEGN") == 0 ) {
+	populate_begn(msg_fields, msg_size, result);
+    }
+    else if ( strcmp(msg_code, "MOVE") == 0 ) {
+	populate_move(msg_fields, msg_size, result);
+    }
+    else if ( strcmp(msg_code, "MOVD") == 0 ) {
+	populate_movd(msg_fields, msg_size, result);
+    }
+    else if ( strcmp(msg_code, "INVL") == 0 ) {
+	populate_invl(msg_fields, msg_size, result);
+    }
+    else if ( strcmp(msg_code, "DRAW") == 0 ) {
+	populate_draw(msg_fields, msg_size, result);
+    }
+    else if ( strcmp(msg_code, "OVER") == 0 ) {
+	populate_over(msg_fields, msg_size, result);
+    } // incorrect code field
+    else {
+	parsing_status = BAD_CODE_FLD;
+    }
+
+    return ( parsing_status == SUCCESS ) ? result : NULL;
+}

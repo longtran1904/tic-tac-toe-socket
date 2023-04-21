@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<string.h>
 #include"protocol.h"
 
 int main (){
@@ -39,14 +40,12 @@ int main (){
     free(buf);
     free(msg);
 
-// NOTE: send message size as written in message to parse_msg()
 
     // generate WAIT message
     buf = malloc(sizeof(char));
     buf_len = 1;
     int wait_len = wait_game(&buf, buf_len);
     printf("message|wait|length %d:\t\t%s\n", wait_len, buf);
-    free(buf);
     // parse WAIT message 
     msg = parse_msg(buf,1);
     if ( msg != NULL ) {
@@ -107,4 +106,67 @@ int main (){
     free(buf); 
 
 
+    // TESTING both get_msg_shift_buf() and parse_msg()
+    buf = malloc(sizeof(char)*72);
+    char buf_sim_str[73] = "OVER|40|W|this is a valid reason for game over!|MOVD|16|X|1,1|X........|";
+    memcpy(buf, buf_sim_str, 72);
+    printf("simulated buffer: %s\n", buf_sim_str);
+
+    int buf_start_index = 0;
+    int msg_size = 0;
+    char *message0 = grab_msg_shift_buf( buf, 72, &msg_size, &buf_start_index);
+
+    if ( message0 == NULL ) {
+	printf("error: %s\n", get_parse_err_val(parsing_status));
+    }
+    else {
+	char *message0_str = malloc(9+msg_size);
+	memcpy(message0_str, message0, 8+msg_size); 
+	message0_str[8+msg_size] = '\0';
+	printf("grabbed message: %s\n", message0_str);
+
+	buf[buf_start_index] = '\0';
+	printf("shifted-buf: %s\n", buf);
+
+	msg = parse_msg(message0, msg_size);
+	if ( msg != NULL ) {
+	    printf("code: %s\noutcome: %c\nreason: %s\n", msg->code, msg->outcome, msg->reason);
+	}
+	else {
+	    printf("error: %s\n", get_parse_err_val(parsing_status));
+	}
+
+	free(msg);
+	free(message0_str);
+    }
+
+    char *message1 = grab_msg_shift_buf( buf, 24, &msg_size, &buf_start_index);
+
+    if ( message1 == NULL ) {
+	printf("grab_msg_shift_buf() error: %s\n", get_parse_err_val(parsing_status));
+    }
+    else {
+	char *message1_str = malloc(9+msg_size);
+	memcpy(message1_str, message1, 8+msg_size); 
+	message1_str[8+msg_size] = '\0';
+	printf("grabbed message: %s\n", message1_str);
+
+	msg = parse_msg(message1, msg_size);
+	if ( msg != NULL ) {
+	    char brd[10];
+	    memcpy(brd, msg->board, 9);
+	    brd[9] = '\0';
+	    printf("code: %s\nrole: %c\nposition: (%d, %d)\nboard: %s\n", msg->code, msg->role, msg->position.x, msg->position.y, brd);
+	}
+	else {
+	    printf("parse_msg() error: %s\n", get_parse_err_val(parsing_status));
+	}
+
+	free(msg);
+	free(message1_str);
+    }
+
+    free(message0);
+    free(message1);
+    free(buf);
 }
