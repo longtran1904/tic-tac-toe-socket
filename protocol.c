@@ -15,7 +15,6 @@ static int line_pos;
 static int append(char** string, int* len, char* append, int append_len){
     while (append_len + line_pos >= *len){
         (*len) *= 8;
-        printf("new len:%d\n", *len);
         *string = (char*) realloc(*string, *len);
     }
     strncpy((*string)+line_pos, append, append_len);
@@ -29,7 +28,6 @@ static int NumToWord(char** word, int word_len, int number){
     }
     while (number){
         char num = number % 10 + '0';
-        printf("char cut|%c|linepos:%d|word_len:%d\n", num, line_pos, word_len);
         line_pos = append(word, &word_len, &num, 1);
         number /= 10;
     }
@@ -48,8 +46,6 @@ static int NumToWord(char** word, int word_len, int number){
     return line_pos;
 }
 int play(char** buf, int buf_len, char* name, int length){
-    printf("Protocol received data|name:%s|length:%d\n", name, length);
-
     char* code = "PLAY|";
 
     int msg_length = length + (length > 0 ? 1 : 0);
