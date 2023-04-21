@@ -97,7 +97,7 @@ void read_data(int sock, struct sockaddr *rem, socklen_t rem_len){
 	while (active && (bytes = read(sock, buf, BUFSIZE)))
 	{
 		buf[bytes] = '\0';
-		printf("[%s:%s] read %d bytes |%s", host, port, bytes, buf);
+		printf("[%s:%s] read %d bytes |%s\n", host, port, bytes, buf);
 	}
 
 	if (bytes == 0){

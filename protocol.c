@@ -14,7 +14,7 @@ static int line_pos;
 
 static int append(char** string, int* len, char* append, int append_len){
     while (append_len + line_pos >= *len){
-        *len *= 2;
+        (*len) *= 8;
         *string = (char*) realloc(*string, *len);
     }
     strncpy((*string)+line_pos, append, append_len);
@@ -49,6 +49,7 @@ int play(char** buf, int buf_len, char* name, int length){
     char* code = "PLAY|";
 
     int msg_length = length + (length > 0 ? 1 : 0);
+    printf("msg length: %d\n", msg_length);
 
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;

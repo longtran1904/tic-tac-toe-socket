@@ -68,7 +68,7 @@ int main (){
     buf_len = 1;
     pair p = {2, 2};
     int move_len = move(&buf, buf_len, 'X', p);
-    printf("message|begin|length %d:\t\t%s\n", begin_len, buf);
+    printf("message|move|length %d:\t\t%s\n", move_len, buf);
     free(buf);
 
     buf = malloc(sizeof(char));
@@ -77,23 +77,22 @@ int main (){
     char board[10] = ".........";
     pair p2 = {1, 1};
     board[(p2.x - 1) * 3 + p2.y - 1] = role;
-    printf("board is %s\n", board);
     int move_board_len = move_board(&buf, buf_len, role, p2, board);
-    printf("message|begin|length %d:\t\t%s\n", begin_len, buf);
+    printf("message|movd|length %d:\t\t%s\n", move_board_len, buf);
     free(buf);
 
     // invalid message
     buf = malloc(sizeof(char));
     buf_len = 1;
     int invalid_len = invalid(&buf, buf_len, "Warning!!! invalid reason", 25);   
-    printf("message|play|length %d:\t\t%s\n", invalid_len, buf);
+    printf("message|invl|length %d:\t\t%s\n", invalid_len, buf);
     free(buf); 
 
     // draw message
     buf = malloc(sizeof(char));
     buf_len = 1;
     int draw_len = draw(&buf, buf_len, SUGGEST);   
-    printf("message|play|length %d:\t\t%s\n", draw_len, buf);
+    printf("message|draw|length %d:\t\t%s\n", draw_len, buf);
     free(buf); 
 
     // over message
@@ -102,7 +101,7 @@ int main (){
     char* reason = "this is a valid reason for game over!";
     int reason_len = 37;
     int over_len = over(&buf, buf_len, WIN, reason, reason_len);   
-    printf("message|play|length %d:\t\t%s\n", over_len, buf);
+    printf("message|over|length %d:\t\t%s\n", over_len, buf);
     free(buf); 
 
 
