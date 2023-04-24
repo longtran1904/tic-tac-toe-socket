@@ -246,13 +246,28 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			    ( sock == game->sock1) ? game->sock2 : game->sock1;
 			int moved_len =
 			    move_board(&msg_buf, buf_len, msg_in->role,
-				    msg_in->position, msg_in->board);
+				    msg_in->position, game->board);
+			
+			// debug: TODO-> set debug mode or Delete
+			char* printable_buf = malloc(sizeof(char) * (moved_len+1));
+			memcpy(printable_buf, msg_buf, moved_len);
+			printable_buf[moved_len] = '\0';
+			printf("message length %d | sending message |%s\n", moved_len, printable_buf);
+			printf("Game Board:\n");
+			for (int i = 0; i < 9; i++) printf("%c", game->board[i]);
+			printf("\n");
+			free(printable_buf);
+			// debug: TODO-> set debug mode or Delete
+
 			send_stat = send_message( game->sock1, msg_buf, moved_len);
 			if ( send_stat ) {
 			    free(msg_buf);
 			    return -1;
 			}
+			printf("sent MOVD to sock1 %d!\n", game->sock1);
+
 			send_stat = send_message( game->sock2, msg_buf, moved_len );
+			printf("sent MOVD to sock2 %d!\n", game->sock2);
 			free(msg_buf);
 			if ( send_stat ) return -1;
 
@@ -439,9 +454,9 @@ void *read_data( void *arg ){
 
     while (active && (curr->bytes += read(con->fd,
 		    curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
-	curr->buf[curr->bytes] = '\0';
-	printf("[%s:%s] read %d bytes %s\n", host, port,
-		curr->bytes, curr->buf);
+	//curr->buf[curr->bytes] = '\0';
+	//printf("[%s:%s] read %d bytes %s\n", host, port,
+	//	curr->bytes, curr->buf);
 	char *msg_str = grab_msg_shift_buf( curr->buf, curr->bytes, 
 		&msg_size, &curr->buf_offset );
 	if ( msg_str == NULL ) {
@@ -453,7 +468,7 @@ void *read_data( void *arg ){
 		break;
 	    }
 	} // successfully grabbed message
-	curr->buf[curr->bytes] = '\0';
+	//curr->buf[curr->bytes] = '\0';
 
 	message *msg_struct = parse_msg( msg_str, msg_size );
 	if ( msg_struct == NULL ) {

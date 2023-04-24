@@ -141,7 +141,7 @@ int move(char** buf, int buf_len, char role, pair p){
     char roles[2] = {role, '|'};
     char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
 
-    int msg_length = 6;
+    int msg_length = 2 + 4; // role = 2 + position + 4
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;
     line_pos = 0;
@@ -174,7 +174,7 @@ int move_board(char** buf, int buf_len, char role, pair p, char* board){
     char roles[2] = {role, '|'};
     char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
 
-    int msg_length = 16;
+    int msg_length = 2 + 4 + BOARDLEN + 1; // role = 2 + pos = 4 + board = 10
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;
     line_pos = 0;
@@ -287,6 +287,14 @@ int over(char** buf, int buf_len, enum game_state state, char* win_reason, int w
 }
 
 int send_message( int sock, char *msg_buf, int msg_len ) {
+
+    // print sending messages
+    char *printable_buf = malloc(sizeof(char) * (msg_len + 1));
+    memcpy(printable_buf, msg_buf, msg_len);
+    printable_buf[msg_len] = '\0';
+    printf("sending to sock %d| message %s\n", sock, printable_buf);
+    // print sending messages
+
     int write_bytes = write(sock, msg_buf, msg_len);
 
     if (write_bytes == -1){
@@ -395,6 +403,15 @@ void populate_move(char *fields, int fields_len, message *result) {
 }
     
 void populate_movd(char *fields, int fields_len, message *result) {
+
+    // see fields - DELETE WHEN DEPLOY
+    char* printable_fields = malloc(sizeof(char) * (fields_len+1));
+    memcpy(printable_fields, fields, fields_len);
+    printable_fields[fields_len] = '\0';
+    printf("fields from MOVD |%s\n", printable_fields);
+    free(printable_fields);
+    // see fields - DELETE WHEN DEPLOY 
+
     msg_info = ALL_GOOD;
 
     if ( fields_len != 16 ) {
@@ -587,7 +604,7 @@ char *grab_msg_shift_buf( char *buf, int buf_len, int *msg_size, int *buf_offset
 message *parse_msg(char* msg_inp, int msg_size) {
     msg_info = ALL_GOOD;
 
-    //printf("msg_size: %d\n", msg_size);
+    printf("msg_size: %d\n", msg_size);
 
     message *result = malloc( sizeof(message) );
     if ( msg_inp[4] == '|' ) {
@@ -640,5 +657,8 @@ message *parse_msg(char* msg_inp, int msg_size) {
     if ( msg_info == ALL_GOOD ) {
 	return result;
     } // there was an error parsing message into struct
+
+    // msg_info when error
+    printf("msg_info: %d\n", msg_info);
     return NULL;
 }

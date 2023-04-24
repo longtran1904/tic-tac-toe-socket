@@ -70,8 +70,12 @@ void print_board(char game[9]){
 message *prev_msg_in;
 bool just_made_move = false;
 char latest_board[9];
+char role;
 
-void send_move_rsgn_or_draw( int sock, char *board ) {
+void send_move_rsgn_or_draw( int sock, char *board, char role ) {
+    
+    print_board( board );
+
     printf("Would you like to:\n\t[0] - Make a move\n\t[1] - Resign\n\t[2] - Request a draw\n");
 
     char *write_buf = malloc(sizeof(char));
@@ -81,24 +85,26 @@ void send_move_rsgn_or_draw( int sock, char *board ) {
     read(STDIN_FILENO, &buf, 3);
 
     if ( buf[0] == '0' ) {
-	print_board( board );
 	printf("Please choose a coordinate ( ex: '1,2' '3,3' '2,1' ):\n");
 	read(STDIN_FILENO, &buf, 3);
 	pair pos = { (int) buf[0] - '0', (int) buf[2] - '0' };
-	int move_len = move(&write_buf, buf_len, 'X', pos);
+	int move_len = move(&write_buf, buf_len, role, pos);
 	send_message( sock, write_buf, move_len );
 	just_made_move = true;
 	free(write_buf);
+	return;
     }
     else if ( buf[0] == '1' ) {
 	int rsgn_len = resign(&write_buf, buf_len);
 	send_message( sock, write_buf, rsgn_len );
 	free(write_buf);
+	return;
     }
-    else {
+    else if ( buf[0] == '2' ) {
 	int draw_len = draw(&write_buf, buf_len, SUGGEST);
 	send_message( sock, write_buf, draw_len);
 	free(write_buf);
+	return;
     }
 }
 
@@ -113,11 +119,13 @@ int message_responder( int sock, message *msg_in ) {
 	printf("You'll be playing against '%s'!\n", msg_in->name);
 	if ( msg_in->role == 'X' ) {
 	    printf("You're assigned to 'X'... you're up first!\n");
+	    role = 'X';
 	    char board[9] = {'.','.','.','.','.','.','.','.','.'};
-	    send_move_rsgn_or_draw( sock, board );
+	    send_move_rsgn_or_draw( sock, board, role );
 	    return 0;
 	} // if not assigned to 'X', we must wait
 	printf("You're assigned to 'O'... you're up after '%s' makes the first move!\n", msg_in->name);
+	role = 'O';
 	return 0;
     }
     else if ( strcmp(msg_code, "MOVD") == 0 ) {
@@ -128,12 +136,12 @@ int message_responder( int sock, message *msg_in ) {
 	} // our turn
 	else {
 	    memcpy(latest_board, msg_in->board, 9);
-	    send_move_rsgn_or_draw( sock, msg_in->board );
+	    send_move_rsgn_or_draw( sock, msg_in->board, role );
 	    return 0;
 	}
     }
     else if ( strcmp(msg_code, "INVL") == 0 ) {
-	//message_responder( sock, prev_msg_in );
+	message_responder( sock, prev_msg_in );
 	return 0;
     }
     else if ( strcmp(msg_code, "DRAW") == 0 ) {
@@ -160,7 +168,7 @@ int message_responder( int sock, message *msg_in ) {
 	} // msg_in->msg = 'R'
 	else {
 	    printf("Your request for a draw was rejected!\n");
-	    send_move_rsgn_or_draw( sock, latest_board );
+	    send_move_rsgn_or_draw( sock, latest_board, role );
 	    return 0;
 	}
     }  // msg_code = "OVER"
@@ -195,7 +203,7 @@ void read_data( int sock ){
 	} // successfully grabbed message
 	buf[bytes] = '\0';
 	
-	printf("buf: %s\n, msg_size %d\n", buf, msg_size);
+	//printf("buf: %s\n, msg_size %d\n", buf, msg_size);
 
 	message *msg_struct = parse_msg( msg_str, msg_size );
 	if ( msg_struct == NULL ) {
@@ -205,9 +213,9 @@ void read_data( int sock ){
 	}
 	// successfully parsed message into struct
 	// respond to message
-	printf("msg_code: %s\n", msg_struct->code);
+	//printf("msg_code: %s\n", msg_struct->code);
 	int terminate = message_responder( sock, msg_struct );
-	//memcpy(prev_msg_in, msg_struct, sizeof(message));
+	prev_msg_in = msg_struct;
 	free(msg_str);
 	free(msg_struct);
 	if ( terminate ) break;
