@@ -18,12 +18,12 @@ enum win_state isDone(char* board)
         main_x &= (board[main_idx] == 'X'? 1 : 0);
         main_o &= (board[main_idx] == 'O'? 1 : 0);
         // sub diagonal
-        sub_idx = convert_pair_single(i, 3 - i); 
+        sub_idx = convert_pair_single(i, 2 - i); 
         sub_x &= (board[sub_idx] == 'X'? 1 : 0);
-        sub_o &= (board[sub_idx] == 'X'? 1 : 0);
+        sub_o &= (board[sub_idx] == 'O'? 1 : 0);
     }
 
-    if (main_x || sub_o) return X_WIN;
+    if (main_x || sub_x) return X_WIN;
     if (main_o || sub_o) return O_WIN;
 
     bool isDraw = true;
@@ -42,6 +42,11 @@ enum win_state isDone(char* board)
             col_x &= (board[col] == 'X'? 1 : 0);
             col_o &= (board[col] == 'O'? 1 : 0); 
         }
+
+        //invalid if both player wins
+        if ((row_x || col_x) && (row_o || col_o))
+            return INVALID; 
+
         if (row_x || col_x) return X_WIN;
         if (row_o || col_o) return O_WIN;
     }
