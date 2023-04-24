@@ -1,8 +1,10 @@
 #include "game_logic.h"
 #include <stdbool.h>
+
 static int convert_pair_single(int i, int j){
     return i*3 + j;
 }
+
 enum win_state isDone(char* board)
 {
     int i, j;
@@ -43,6 +45,6 @@ enum win_state isDone(char* board)
         if (row_x || col_x) return X_WIN;
         if (row_o || col_o) return O_WIN;
     }
-    if (isDraw) return DRAW;
+    if (isDraw) return BOARD_FILLED_DRAW;
     return UNFINISHED;
 }

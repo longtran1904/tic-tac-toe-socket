@@ -16,7 +16,7 @@ int main (){
 	printf("code: %s\nname: %s\n", msg->code, msg->name);
     }
     else {
-	printf("error: %s\n", get_parse_err_val(parsing_status));
+	printf("error: %s\n", get_msg_info_str(msg_info));
     }
     free(buf);
     free(msg);
@@ -35,7 +35,7 @@ int main (){
 	printf("code: %s\nname: %s\n", msg->code, msg->name);
     }
     else {
-	printf("error: %s\n", get_parse_err_val(parsing_status));
+	printf("error: %s\n", get_msg_info_str(msg_info));
     }
     free(buf);
     free(msg);
@@ -52,7 +52,7 @@ int main (){
 	printf("code: %s\n", msg->code);
     }
     else {
-	printf("error: %s\n", get_parse_err_val(parsing_status));
+	printf("error: %s\n", get_msg_info_str(msg_info));
     }
     free(buf);
     free(msg);
@@ -116,7 +116,7 @@ int main (){
     char *message0 = grab_msg_shift_buf( buf, 72, &msg_size, &buf_start_index);
 
     if ( message0 == NULL ) {
-	printf("error: %s\n", get_parse_err_val(parsing_status));
+	printf("error: %s\n", get_msg_info_str(msg_info));
     }
     else {
 	char *message0_str = malloc(9+msg_size);
@@ -132,7 +132,7 @@ int main (){
 	    printf("code: %s\noutcome: %c\nreason: %s\n", msg->code, msg->outcome, msg->reason);
 	}
 	else {
-	    printf("error: %s\n", get_parse_err_val(parsing_status));
+	    printf("error: %s\n", get_msg_info_str(msg_info));
 	}
 
 	free(msg);
@@ -142,7 +142,7 @@ int main (){
     char *message1 = grab_msg_shift_buf( buf, 24, &msg_size, &buf_start_index);
 
     if ( message1 == NULL ) {
-	printf("grab_msg_shift_buf() error: %s\n", get_parse_err_val(parsing_status));
+	printf("grab_msg_shift_buf() error: %s\n", get_msg_info_str(msg_info));
     }
     else {
 	char *message1_str = malloc(9+msg_size);
@@ -158,7 +158,7 @@ int main (){
 	    printf("code: %s\nrole: %c\nposition: (%d, %d)\nboard: %s\n", msg->code, msg->role, msg->position.x, msg->position.y, brd);
 	}
 	else {
-	    printf("parse_msg() error: %s\n", get_parse_err_val(parsing_status));
+	    printf("parse_msg() error: %s\n", get_msg_info_str(msg_info));
 	}
 
 	free(msg);
