@@ -141,7 +141,7 @@ int move(char** buf, int buf_len, char role, pair p){
     char roles[2] = {role, '|'};
     char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
 
-    int msg_length = CODELEN + 2 + 4;
+    int msg_length = 6;
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;
     line_pos = 0;
@@ -174,7 +174,7 @@ int move_board(char** buf, int buf_len, char role, pair p, char* board){
     char roles[2] = {role, '|'};
     char pos[4] = {p.x + '0', ',', p.y + '0', '|'};
 
-    int msg_length = CODELEN + 2 + 4;
+    int msg_length = 16;
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;
     line_pos = 0;
@@ -383,7 +383,7 @@ void set_pos( char *fields, int fields_len, message *result ) {
 void populate_move(char *fields, int fields_len, message *result) {
     msg_info = ALL_GOOD;
 
-    if ( fields_len != 12 ) {
+    if ( fields_len != 6 ) {
 	msg_info = BAD_FORMAT;
 	return; // incorrect message length
     }

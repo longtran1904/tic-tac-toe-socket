@@ -110,15 +110,17 @@ int message_responder( int sock, message *msg_in ) {
 	return 0;
     }
     else if ( strcmp(msg_code, "BEGN") == 0 ) {
+	printf("You'll be playing against '%s'!\n", msg_in->name);
 	if ( msg_in->role == 'X' ) {
+	    printf("You're assigned to 'X'... you're up first!\n");
 	    char board[9] = {'.','.','.','.','.','.','.','.','.'};
 	    send_move_rsgn_or_draw( sock, board );
 	    return 0;
 	} // if not assigned to 'X', we must wait
+	printf("You're assigned to 'O'... you're up after '%s' makes the first move!\n", msg_in->name);
 	return 0;
     }
     else if ( strcmp(msg_code, "MOVD") == 0 ) {
-	printf("made it here!\n");
 	if ( just_made_move ) {
 	    memcpy(latest_board, msg_in->board, 9);
 	    just_made_move = false;
@@ -192,6 +194,8 @@ void read_data( int sock ){
 	    }
 	} // successfully grabbed message
 	buf[bytes] = '\0';
+	
+	printf("buf: %s\n, msg_size %d\n", buf, msg_size);
 
 	message *msg_struct = parse_msg( msg_str, msg_size );
 	if ( msg_struct == NULL ) {
