@@ -396,7 +396,6 @@ char *server_state[3][4] = {
 
 // assumes msg_in is NOT NULL
 int message_responder( int sock, message *msg_in ) {
-    //TODO: once a game ends, call remove_existing_game( sock )
     game_node *game = grab_game( sock );
 
     if ( game == NULL ) { // we have a new player!
@@ -455,6 +454,9 @@ void *read_data( void *arg ){
 
     while (active && (curr->bytes += read(con->fd,
 		    curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
+	//curr->buf[curr->bytes] = '\0';
+	//printf("[%s:%s] read %d bytes %s\n", host, port,
+	//	curr->bytes, curr->buf);
 	char *msg_str = grab_msg_shift_buf( curr->buf, curr->bytes, 
 		&msg_size, &curr->buf_offset );
 	if ( msg_str == NULL ) {
@@ -466,9 +468,7 @@ void *read_data( void *arg ){
 		break;
 	    }
 	} // successfully grabbed message
-	curr->buf[curr->bytes] = '\0';
-	printf("[%s:%s] read %d bytes |%s\n", host, port,
-		curr->bytes, curr->buf);
+	//curr->buf[curr->bytes] = '\0';
 
 	message *msg_struct = parse_msg( msg_str, msg_size );
 	if ( msg_struct == NULL ) {
@@ -488,6 +488,8 @@ void *read_data( void *arg ){
 	free(msg_struct);
 	if ( respond_err ) break;
 	if ( curr->buf_offset == 0 ) curr->bytes = 0;
+	curr->buf[curr->bytes] = '\0';
+	//printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
     }
 
     if (curr->bytes == 0){
