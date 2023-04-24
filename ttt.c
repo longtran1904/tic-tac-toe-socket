@@ -72,6 +72,9 @@ bool just_made_move = false;
 char latest_board[9];
 
 void send_move_rsgn_or_draw( int sock, char *board ) {
+    
+    print_board( board );
+
     printf("Would you like to:\n\t[0] - Make a move\n\t[1] - Resign\n\t[2] - Request a draw\n");
 
     char *write_buf = malloc(sizeof(char));
@@ -81,7 +84,6 @@ void send_move_rsgn_or_draw( int sock, char *board ) {
     read(STDIN_FILENO, &buf, 3);
 
     if ( buf[0] == '0' ) {
-	print_board( board );
 	printf("Please choose a coordinate ( ex: '1,2' '3,3' '2,1' ):\n");
 	read(STDIN_FILENO, &buf, 3);
 	pair pos = { (int) buf[0] - '0', (int) buf[2] - '0' };
@@ -115,13 +117,21 @@ int message_responder( int sock, message *msg_in ) {
 	    send_move_rsgn_or_draw( sock, board );
 	    return 0;
 	} // if not assigned to 'X', we must wait
+    else{
+        char board[9] = {'.','.','.','.','.','.','.','.','.'};
+        printf("Your role is O\n");
+        print_board(board);
+        printf("Waiting for you turn\n");
+    }
 	return 0;
     }
     else if ( strcmp(msg_code, "MOVD") == 0 ) {
-	printf("made it here!\n");
 	if ( just_made_move ) {
 	    memcpy(latest_board, msg_in->board, 9);
+        printf("A player just made a move!!!\n");
+        print_board(latest_board);
 	    just_made_move = false;
+        printf("Waiting for your turn......\n");
 	    return 0;
 	} // our turn
 	else {
