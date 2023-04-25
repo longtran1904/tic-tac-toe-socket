@@ -583,6 +583,9 @@ void *read_data( void *arg ){
 	// update socket status of partner to inactive 
 	is_active[sock_partner][0] = 0;
 	is_active[sock_partner][1] = 0;
+
+	// remove game if connection terminated randomly (not from game ending)
+	remove_existing_game( con->fd );
     } // has no partner and is active
     else if ( is_active[con->fd][0] ) {
 	printf("closing socket: %d\n", con->fd);
