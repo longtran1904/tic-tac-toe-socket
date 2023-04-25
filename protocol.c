@@ -311,7 +311,7 @@ void populate_play(char *fields, int fields_len, message *result) {
     int count = 0;
 
     if ( fields_len < 2 ) {
-	msg_info = BAD_FORMAT;
+	msg_info = BAD_FORMAT; 
 	return;
     }
 
@@ -475,7 +475,7 @@ void populate_draw(char *fields, int fields_len, message *result) {
 void populate_over(char *fields, int fields_len, message *result) {
     msg_info = ALL_GOOD;
 
-    if ( fields_len < 3 ) {
+    if ( fields_len < 4 ) {
 	msg_info = BAD_FORMAT;
 	return;
     }

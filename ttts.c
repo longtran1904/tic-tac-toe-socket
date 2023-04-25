@@ -26,6 +26,8 @@
     #define DEBUG 0
 #endif
 
+int is_active[13000] = { 0 };
+
 volatile int active = 1;
 
 void handler(int signum){
@@ -137,13 +139,18 @@ int send_invld( int sock ) {
 	    invalid_len = invalid(&msg_buf, buf_len,\
 		    "Invalid board: must contain only 'X', 'O', or '.'!", 50);
 	    break;
+	case BAD_MSG_FLD:
+	    invalid_len = invalid(&msg_buf, buf_len,\
+		    "Invalid message: must be 'S', 'A', 'R'!", 39);
+	    break;
 	case UNEXPECTED:
 	    invalid_len = invalid(&msg_buf, buf_len,\
 		    "Message not expected at this time!", 34);
 	    break;
 	default:
 	    invalid_len = invalid(&msg_buf, buf_len,\
-		    "Invalid message recieved: terminating connection!", 49);
+		    "Garbage / corrupt message recieved: terminating connection!", 59);
+	    send_message( sock, msg_buf, invalid_len );
 	    free(msg_buf);
 	    return -1; // signifies we should terminate
     }
@@ -298,6 +305,8 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			free(msg_buf);
 			if ( send_stat ) return -1;
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
+			is_active[game->sock1] = 0;
+			is_active[game->sock2] = 0;
 			return remove_existing_game( sock );
 
 			//
@@ -321,6 +330,8 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			free(msg_buf);
 			if ( send_stat ) return -1;
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
+			is_active[game->sock1] = 0;
+			is_active[game->sock2] = 0;
 			return remove_existing_game( sock );
 		    }
 		} // position already taken
@@ -348,6 +359,8 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
+	    is_active[game->sock1] = 0;
+	    is_active[game->sock2] = 0;
 	    return remove_existing_game( sock );
 	} // msg_code is "DRAW" and should be 'S' for suggest because we are in state 1
 	else {
@@ -374,6 +387,8 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
+	    is_active[game->sock1] = 0;
+	    is_active[game->sock2] = 0;
 	    return remove_existing_game( sock );
 	} 
 	else if ( msg_in->msg == 'R' ) {
@@ -458,8 +473,8 @@ void *read_data( void *arg ){
 
     printf("Connection from %s:%s\n", host, port);
 
-    while (active && (curr->bytes += read(con->fd,
-		    curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
+    while (active /*&& is_active[con->fd] */  && 
+	    (curr->bytes += read(con->fd, curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
 
 	//curr->buf[curr->bytes] = '\0';
 	//printf("[%s:%s] read %d bytes %s\n", host, port,
@@ -478,6 +493,7 @@ void *read_data( void *arg ){
 		free(msg_str);
 		terminate = send_invld( con->fd );
 		if ( terminate ) { // close connection
+		    printf("terminating because send_invld\n");
 		    perror("parse_msg() error");
 		    break;
 		} // try to read again... !!!NOTE: this overrides buf if had > 1 msg
@@ -505,14 +521,26 @@ void *read_data( void *arg ){
 	// no more complete messages in buf
 	if ( terminate || respond_stat ) break;
 
-	if ( msg_info != ALL_GOOD ) {
+	if ( msg_info != BAD_FORMAT ) {
 	    if ( msg_info == INCOMPLETE_MSG ) {
 		continue;
-	    } // corrupted message: break and close socket
+	    } // msg_info not INCOMPLETE_MSG but some other prob: reset read
 	    else {
-		perror("grab_msg_shift_buf() error");
-		break;
+		curr->bytes = 0;
+		curr->buf_offset = 0;
+		continue;
 	    }
+	} // corrupted message: break and close socket
+	else {
+	    perror("INVALID MESSAGE FORMAT RECEIVED");
+	    char *msg_buf = malloc(BUFSIZE);
+	    int buf_len = 1;
+	    int invalid_len = invalid(&msg_buf, buf_len,\
+		    "Garbage / corrupt message recieved: terminating connection!", 59);
+	    send_message( con->fd, msg_buf, invalid_len );
+	    free(msg_buf);
+	    printf("termination reason: %s\n", get_msg_info_str(msg_info));
+	    break;
 	}
     }
 
@@ -524,6 +552,7 @@ void *read_data( void *arg ){
 	printf("[%s:%s] terminating\n", host, port);
     }
 
+    printf("closing socket: %d\n", con->fd);
     close(con->fd);
 
     rm_sock_buf_node( con->fd );
@@ -572,6 +601,8 @@ int main(int argc, char ** argv){
 	    fprintf(stderr, "sigmask: %s\n", strerror(error));
 	    exit(EXIT_FAILURE);
 	}
+
+	is_active[con->fd] = 1;
 
 	error = pthread_create(&tid, NULL, read_data, con);
 	if (error != 0) {

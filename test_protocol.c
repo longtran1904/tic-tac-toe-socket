@@ -11,7 +11,7 @@ int main (){
     printf("message|play|length %d:\t\t%s\n", play_len, buf);
 
     // parse PLAY message
-    message *msg = parse_msg(buf, 34);
+    message *msg = parse_msg(buf, play_len-8);
     if ( msg != NULL ) {
 	printf("code: %s\nname: %s\n", msg->code, msg->name);
     }
@@ -30,7 +30,7 @@ int main (){
     printf("message|play|length %d:\t\t%s\n", play_len, buf);
  
     // parse PLAY message with null name
-    msg = parse_msg(buf,1);
+    msg = parse_msg(buf,0);
     if ( msg != NULL ) {
 	printf("code: %s\nname: %s\n", msg->code, msg->name);
     }
@@ -47,7 +47,7 @@ int main (){
     int wait_len = wait_game(&buf, buf_len);
     printf("message|wait|length %d:\t\t%s\n", wait_len, buf);
     // parse WAIT message 
-    msg = parse_msg(buf,1);
+    msg = parse_msg(buf,0);
     if ( msg != NULL ) {
 	printf("code: %s\n", msg->code);
     }
@@ -58,19 +58,42 @@ int main (){
     free(msg);
 
 
+    // generate BEGN message
     buf = malloc(sizeof(char));
     buf_len = 1;
-    int begin_len = begin(&buf, buf_len, 'X', "Jotaro", 6);
+    int begin_len = begin(&buf, buf_len, 'X', "Jotaro", 7); // 7 to account for '\0' for printing
     printf("message|begin|length %d:\t\t%s\n", begin_len, buf);
+    // parse BEGN message 
+    msg = parse_msg(buf,begin_len-8);
+    if ( msg != NULL ) {
+	printf("code: %s\nrole: %c\nname: %s\n", msg->code, msg->role, msg->name);
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
     free(buf);
-    
+    free(msg);
+
+
+    // generate MOVE message
     buf = malloc(sizeof(char));
     buf_len = 1;
     pair p = {2, 2};
     int move_len = move(&buf, buf_len, 'X', p);
     printf("message|move|length %d:\t\t%s\n", move_len, buf);
+    // parse MOVE message 
+    msg = parse_msg(buf,move_len-7);
+    if ( msg != NULL ) {
+	printf("code: %s\nrole: %c\nposition: (%d, %d)\n", msg->code, msg->role, msg->position.x, msg->position.y);
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
     free(buf);
+    free(msg);
 
+
+    // generate MOVD message
     buf = malloc(sizeof(char));
     buf_len = 1;
     char role = 'X';
@@ -79,30 +102,69 @@ int main (){
     board[(p2.x - 1) * 3 + p2.y - 1] = role;
     int move_board_len = move_board(&buf, buf_len, role, p2, board);
     printf("message|movd|length %d:\t\t%s\n", move_board_len, buf);
+    // parse MOVD message 
+    msg = parse_msg(buf,move_board_len-8);
+    if ( msg != NULL ) {
+	printf("code: %s\nrole: %c\nposition: (%d, %d)\n", msg->code, msg->role, msg->position.x, msg->position.y);
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
     free(buf);
+    free(msg);
 
-    // invalid message
+
+    // generate INVL message
     buf = malloc(sizeof(char));
     buf_len = 1;
-    int invalid_len = invalid(&buf, buf_len, "Warning!!! invalid reason", 25);   
+    int invalid_len = invalid(&buf, buf_len, "Warning!!! invalid reason", 26); // len is 26 so includes '\0' for printing
     printf("message|invl|length %d:\t\t%s\n", invalid_len, buf);
-    free(buf); 
+    // parse INVL message 
+    msg = parse_msg(buf,invalid_len-8);
+    if ( msg != NULL ) {
+	printf("code: %s\nreason: %s\n", msg->code, msg->reason);
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
+    free(buf);
+    free(msg);
 
-    // draw message
+
+    // generate DRAW message
     buf = malloc(sizeof(char));
     buf_len = 1;
     int draw_len = draw(&buf, buf_len, SUGGEST);   
     printf("message|draw|length %d:\t\t%s\n", draw_len, buf);
-    free(buf); 
+    // parse DRAW message 
+    msg = parse_msg(buf,draw_len-7);
+    if ( msg != NULL ) {
+	printf("code: %s\nmessage: %c\n", msg->code, msg->msg);
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
+    free(buf);
+    free(msg);
 
-    // over message
+
+    // generate OVER message
     buf = malloc(sizeof(char));
     buf_len = 1;
     char* reason = "this is a valid reason for game over!";
-    int reason_len = 37;
+    int reason_len = 38; // added 1 to make str for printing
     int over_len = over(&buf, buf_len, WIN, reason, reason_len);   
     printf("message|over|length %d:\t\t%s\n", over_len, buf);
-    free(buf); 
+    // parse OVER message 
+    msg = parse_msg(buf,over_len-8);
+    if ( msg != NULL ) {
+	printf("code: %s\noutcome: %c\nreason: %s\n", msg->code, msg->outcome, msg->reason );
+    }
+    else {
+	printf("error: %s\n", get_msg_info_str(msg_info));
+    }
+    free(buf);
+    free(msg);
 
 
     // TESTING both get_msg_shift_buf() and parse_msg()
