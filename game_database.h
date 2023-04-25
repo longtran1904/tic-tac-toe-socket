@@ -27,3 +27,7 @@ int remove_existing_game( int sock );
 // returns the game_node of game associated with sock
 // if not found, returns NULL
 game_node *grab_game( int sock );
+
+// checks if name is found in any of the current games 
+// if found, returns false, else true 
+bool name_is_unique( char *name );
