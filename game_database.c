@@ -1,5 +1,6 @@
 #include "game_database.h"
 #include <string.h>
+#include <stdbool.h>
 
 game_node *list_head = NULL;
 game_node *list_tail = NULL;
@@ -65,4 +66,16 @@ game_node *grab_game( int sock ) {
 	tmp = tmp->next_game;
     }
     return NULL; // there is no game associated with sock
+}
+
+// checks if name is found in any of the current games 
+// if found, returns false, else true 
+bool name_is_unique( char *name ) {
+    game_node *tmp = list_head;
+    while( tmp != NULL ) {
+	if ( strcmp(tmp->sock1_name, name)==0 ||
+		strcmp(tmp->sock2_name, name)==0 ) { return false; }
+	tmp = tmp->next_game;
+    }
+    return true; // name is unique 
 }

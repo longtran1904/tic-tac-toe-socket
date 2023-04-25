@@ -11,6 +11,12 @@
 // socket/network declaration functions
 int connect_inet(char *host, char *service);
 
+message *prev_msg_in; 
+bool just_made_move = false;
+char latest_board[9];
+char role;
+bool just_sent_play = false;
+
 int connect_inet(char *host, char *service)
 {
     struct addrinfo hints, *info_list, *info;
@@ -53,31 +59,25 @@ void print_board(char game[9]){
     printf("The current board is: \n");
     int i,j, count = 0;
     for (i = 0; i < 7; i++){
-        for (j = 0; j < 7; j++)
-            if (i % 2 == 0) printf("-");
-            else {
-                if (j % 2 == 0) printf("|");
-                else {
-                    if (game[count] != ' ')
-                        printf("%c", game[count++]);
-                    else printf("%d", ++count);
-                }
-            }    
+	for (j = 0; j < 7; j++)
+	    if (i % 2 == 0) printf("-");
+	    else {
+		if (j % 2 == 0) printf("|");
+		else {
+		    if (game[count] != ' ')
+			printf("%c", game[count++]);
+		    else printf("%d", ++count);
+		}
+	    }    
 	printf("\n");
     }
 }
-
-message *prev_msg_in;
-bool just_made_move = false;
-char latest_board[9];
-char role;
 
 void send_move_rsgn_or_draw( int sock, char *board, char role ) {
     char *write_buf = malloc(sizeof(char));
     int buf_len = 1;
 
     char buf1[10];
-    int bytes;
 
     print_board( board );
     printf("Would you like to:\n\t[0] - Make a move\n\t[1] - Resign\n\t[2] - Request a draw\n");
@@ -151,8 +151,35 @@ int message_responder( int sock, message *msg_in ) {
     }
     else if ( strcmp(msg_code, "INVL") == 0 ) {
 	printf("%s\n", msg_in->reason);
-	message_responder( sock, prev_msg_in );
-	return 0;
+	if (just_sent_play) {
+	    printf("Enter your username:\n");
+	    char user[BUFSIZE];
+	    int bytes;
+	    if ((bytes = read(STDIN_FILENO, user, BUFSIZE)) > 0){
+		// generate PLAY message 
+		char* msg_buffer = malloc(sizeof(char));
+		int buf_len = 1;
+		int play_len = play(&msg_buffer, buf_len, user, bytes - 1); // exclude \n from input
+
+		// send PLAY message to server
+		int write_bytes = write(sock, msg_buffer, play_len);
+		just_sent_play = true;
+
+		// free
+		free(msg_buffer);
+
+		if (write_bytes == -1){
+		    perror("write");
+		    close(sock);
+		    return -1;
+		}
+		return 1;
+	    }
+	}
+	else {
+	    message_responder( sock, prev_msg_in );
+	    return 0;
+	}
     }
     else if ( strcmp(msg_code, "DRAW") == 0 ) {
 	if ( msg_in->msg == 'S' ) {
@@ -200,6 +227,7 @@ int message_responder( int sock, message *msg_in ) {
 	}
 	return -1; // terminate
     }
+    return -1; // terminate: unknown msg_code
 }
 
 void read_data( int sock ){
@@ -225,20 +253,30 @@ void read_data( int sock ){
 	    }
 	    // successfully parsed message into struct
 	    // respond to message
-	    //printf("msg_code: %s\n", msg_struct->code);
 	    terminate = message_responder( sock, msg_struct );
-	    prev_msg_in = msg_struct;
+	    memcpy(prev_msg_in, msg_struct, sizeof(message));
 	    free(msg_str);
 	    free(msg_struct);
-	    if ( terminate ) break;
+	    just_sent_play = false;
+	    if ( terminate == 1 ) {
+		just_sent_play = true;
+	    }
+	    else if ( terminate ) {
+		break;
+	    }
 	    msg_info = ALL_GOOD;
 	    if ( buf_offset == 0 ) {
 		bytes = 0;
 		break;
 	    }
 	}
-	
-	if ( terminate ) break;
+
+	if ( terminate == 1 ) {
+	    continue;
+	}
+	else if ( terminate ) {
+	    break;
+	}
 
 	if ( msg_info != ALL_GOOD ) {
 	    if ( msg_info == INCOMPLETE_MSG ) {
@@ -262,6 +300,8 @@ int main(int argc, char **argv){
     sock = connect_inet(argv[1], argv[2]);
     if (sock < 0) exit(EXIT_FAILURE);
 
+    prev_msg_in = malloc(sizeof(message)); 
+
     printf("Welcome to Tic-Tac-Toe!!!\n");  
     printf("Enter your username:\n");
     char user[BUFSIZE];
@@ -273,6 +313,7 @@ int main(int argc, char **argv){
 
 	// send PLAY message to server
 	write_bytes = write(sock, msg_buffer, play_len);
+	just_sent_play = true;
 
 	// free
 	free(msg_buffer);
@@ -291,6 +332,8 @@ int main(int argc, char **argv){
     }
 
     read_data( sock );
+
+    free(prev_msg_in);
 
     return EXIT_SUCCESS;
 

@@ -2,6 +2,7 @@
 #define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -169,19 +170,6 @@ int send_invld( int sock ) {
     return send_stat;
 }
 
-// applies mutex lock to name-containing data-structure and checks if name is unique
-// returns 1 if is unique, 0 otherwise
-// before returning unlocks name-containing data-structure
-int name_is_unique( char *name, int name_len ) {
-    char name_str[name_len+1];
-    memcpy(name_str, name, name_len);
-    name_str[name_len] = '\0';
-
-    //TODO
-    //...
-
-    return 1;
-}
 
 int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
     char *msg_buf = malloc(sizeof(char));
@@ -198,7 +186,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	// game was just initiated with this one player
 	if ( sock == game->sock1 ) {
 	    // send WAIT to player1
-	    if ( !name_is_unique( msg_in->name, msg_in->name_len ) ) { 
+	    if ( !name_is_unique( msg_in->name ) ) { 
 		msg_info = NAME_TAKEN;
 		return ( send_invld( sock ) ) ? -1 : 1;
 	    }
@@ -211,7 +199,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    return 0;
 	} // game has a second player!
 	else {
-	    if ( !name_is_unique( msg_in->name, msg_in->name_len ) ) { 
+	    if ( !name_is_unique( msg_in->name ) ) { 
 		msg_info = NAME_TAKEN;
 		return ( send_invld( sock ) ) ? -1 : 1;
 	    }
@@ -336,15 +324,6 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
 			is_active[sock][0] = 0; // mark socket as inactive
 			return remove_existing_game( sock );
-
-			//
-			// !!!!!!!!!!!!!!!
-			//
-			// 
-			//TODO: signal both threads to terminate
-			//
-			// !!!!!!!!!!!!!!
-			// 
 		    } // it's a DRAW
 		    else {
 			char *reason = "The grid is full: it's a draw!";
