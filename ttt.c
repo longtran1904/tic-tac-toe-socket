@@ -73,38 +73,47 @@ char latest_board[9];
 char role;
 
 void send_move_rsgn_or_draw( int sock, char *board, char role ) {
-    
-    print_board( board );
-
-    printf("Would you like to:\n\t[0] - Make a move\n\t[1] - Resign\n\t[2] - Request a draw\n");
-
     char *write_buf = malloc(sizeof(char));
     int buf_len = 1;
 
-    char buf[3];
-    read(STDIN_FILENO, &buf, 3);
+    char buf1[10];
+    int bytes;
 
-    if ( buf[0] == '0' ) {
+    print_board( board );
+    printf("Would you like to:\n\t[0] - Make a move\n\t[1] - Resign\n\t[2] - Request a draw\n");
+
+    while ( read(STDIN_FILENO, &buf1, 10) > 0 ) {
+	if ( buf1[0] == '0' || buf1[0] == '1' || buf1[0] == '2') {
+	    break;
+	}
+    }
+
+    if ( buf1[0] == '0' ) {
 	printf("Please choose a coordinate ( ex: '1,2' '3,3' '2,1' ):\n");
-	read(STDIN_FILENO, &buf, 3);
-	pair pos = { (int) buf[0] - '0', (int) buf[2] - '0' };
+
+	char buf2[10];
+	while ( read(STDIN_FILENO, &buf2, 3) > 0 ) {
+	    if ( (buf2[0] == '1' || buf2[0] == '2' || buf2[0] == '3') &&
+		    (buf2[2] == '1' || buf2[2] == '2' || buf2[2] == '3') ) {
+		break;
+	    }
+	}
+
+	pair pos = { (int) buf2[0] - '0', (int) buf2[2] - '0' };
 	int move_len = move(&write_buf, buf_len, role, pos);
 	send_message( sock, write_buf, move_len );
 	just_made_move = true;
 	free(write_buf);
-	return;
     }
-    else if ( buf[0] == '1' ) {
+    else if ( buf1[0] == '1' ) {
 	int rsgn_len = resign(&write_buf, buf_len);
 	send_message( sock, write_buf, rsgn_len );
 	free(write_buf);
-	return;
-    }
-    else if ( buf[0] == '2' ) {
+    } // buf1[0] == '2'
+    else {
 	int draw_len = draw(&write_buf, buf_len, SUGGEST);
 	send_message( sock, write_buf, draw_len);
 	free(write_buf);
-	return;
     }
 }
 
@@ -146,25 +155,31 @@ int message_responder( int sock, message *msg_in ) {
     }
     else if ( strcmp(msg_code, "DRAW") == 0 ) {
 	if ( msg_in->msg == 'S' ) {
-	    print_board( msg_in->board );
-	    printf("Your opponent has suggested a draw!\n\
-		    \tif you agree: [y]\n\tif you disagree: [n]\n");
-	    char buf;
-	    read(STDIN_FILENO, &buf, 1);
+	    print_board( latest_board );
+	    printf("Your opponent has suggested a draw!\n\tif you agree: [y]\n\tif you disagree: [n]\n");
+
+	    char buf[10];
+	    while ( read(STDIN_FILENO, &buf, 10) > 0 ) {
+		if ( buf[0] == 'y' || buf[0] == 'n' ) {
+		    break;
+		}
+	    }
+
 	    char *write_buf = malloc(sizeof(char));
 	    int buf_len = 1;
-	    if ( buf == 'y' ) {
+	    if ( buf[0] == 'y' ) {
 		int draw_len = draw(&write_buf, buf_len, ACCEPT);
 		send_message( sock, write_buf, draw_len );
 		free(write_buf);
 		return 0;
 	    } // you rejected the draw
-	    else {
+	    else if ( buf[0] == 'n' ) {
 		int draw_len = draw(&write_buf, buf_len, REJECT);
 		send_message( sock, write_buf, draw_len );
 		free(write_buf);
 		return 0;
 	    }
+	    return 0;
 	} // msg_in->msg = 'R'
 	else {
 	    printf("Your request for a draw was rejected!\n");
@@ -191,8 +206,40 @@ void read_data( int sock ){
     int bytes=0, msg_size=0, buf_offset=0;
 
     while ((bytes += read(sock, buf+buf_offset, BUFSIZE-buf_offset))) {
-	char *msg_str = grab_msg_shift_buf( buf, bytes, &msg_size, &buf_offset );
-	if ( msg_str == NULL ) {
+
+	char *msg_str;
+	int terminate = 0;
+	while ( (msg_str = grab_msg_shift_buf( buf, bytes, &msg_size, &buf_offset ) ) )
+	{
+	    // successfully grabbed a message
+	    //buf[bytes] = '\0';
+	    //printf("buf: %s\n, msg_size %d\n", buf, msg_size);
+
+	    message *msg_struct = parse_msg( msg_str, msg_size );
+	    if ( msg_struct == NULL ) {
+		free(msg_str);
+		perror("parse_msg() error");
+		terminate = -1;
+		break; // close connection
+	    }
+	    // successfully parsed message into struct
+	    // respond to message
+	    //printf("msg_code: %s\n", msg_struct->code);
+	    terminate = message_responder( sock, msg_struct );
+	    prev_msg_in = msg_struct;
+	    free(msg_str);
+	    free(msg_struct);
+	    if ( terminate ) break;
+	    msg_info = ALL_GOOD;
+	    if ( buf_offset == 0 ) {
+		bytes = 0;
+		break;
+	    }
+	}
+	
+	if ( terminate ) break;
+
+	if ( msg_info != ALL_GOOD ) {
 	    if ( msg_info == INCOMPLETE_MSG ) {
 		continue;
 	    } // corrupted message: break and close socket
@@ -200,26 +247,7 @@ void read_data( int sock ){
 		perror("grab_msg_shift_buf() error");
 		break;
 	    }
-	} // successfully grabbed message
-	buf[bytes] = '\0';
-	
-	//printf("buf: %s\n, msg_size %d\n", buf, msg_size);
-
-	message *msg_struct = parse_msg( msg_str, msg_size );
-	if ( msg_struct == NULL ) {
-	    free(msg_str);
-	    perror("parse_msg() error");
-	    break; // close connection
 	}
-	// successfully parsed message into struct
-	// respond to message
-	//printf("msg_code: %s\n", msg_struct->code);
-	int terminate = message_responder( sock, msg_struct );
-	prev_msg_in = msg_struct;
-	free(msg_str);
-	free(msg_struct);
-	if ( terminate ) break;
-	if ( buf_offset == 0 ) bytes = 0;
     }
 
     printf("Terminating connection!\n");
@@ -254,7 +282,7 @@ int main(int argc, char **argv){
 	    return EXIT_FAILURE;
 	}
 
-	printf("write %d bytes\n", write_bytes);
+	//printf("write %d bytes\n", write_bytes);
     } // failed to read username
     else {
 	perror("read username");
