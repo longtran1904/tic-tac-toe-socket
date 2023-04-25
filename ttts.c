@@ -211,6 +211,10 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    return 0;
 	} // game has a second player!
 	else {
+	    if ( !name_is_unique( msg_in->name, msg_in->name_len ) ) { 
+		msg_info = NAME_TAKEN;
+		return ( send_invld( sock ) ) ? -1 : 1;
+	    }
 	    is_active[game->sock1][1] = sock; // update pairing in is_active
 	    is_active[sock][1] = game->sock1; // update pairing in is_active
 	    game->sock2 = sock;
