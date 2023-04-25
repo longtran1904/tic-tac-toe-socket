@@ -35,7 +35,11 @@ int rm_sock_buf_node( int sock ) {
     sock_buf_node *tmp = sock_buf_head;
     while( tmp != NULL ) {
 	if ( tmp->sock == sock ) {
-	    if ( tmp == sock_buf_head ) {
+	    if ( sock_buf_head == sock_buf_tail ) {
+		sock_buf_head = NULL;
+		sock_buf_tail = NULL;
+	    }
+	    else if ( tmp == sock_buf_head ) {
 		sock_buf_head = tmp->next;
 	    }
 	    else if ( tmp == sock_buf_tail ) {
