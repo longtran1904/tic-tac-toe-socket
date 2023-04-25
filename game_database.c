@@ -33,7 +33,11 @@ int remove_existing_game( int sock ) {
     while( tmp != NULL ) {
 	if ( (tmp->sock1 == sock) || (tmp->sock2 == sock) ) {
 	    // found the game to be removed
-	    if ( tmp == list_head ) {
+	    if ( list_head == list_tail ) {
+		list_head = NULL;
+		list_tail = NULL;
+	    }
+	    else if ( tmp == list_head ) {
 		list_head = tmp->next_game;
 	    }
 	    else if ( tmp == list_tail ) {
