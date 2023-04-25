@@ -30,7 +30,7 @@ sock_buf_node *create_new_node( int sock ) {
 // finds, removes, and frees existing data associated with sock
 // returns 0 on success
 // returns -1 on failure 
-int remove_existing_node( int sock ) {
+int rm_sock_buf_node( int sock ) {
     sock_buf_node *prev = sock_buf_head;
     sock_buf_node *tmp = sock_buf_head;
     while( tmp != NULL ) {

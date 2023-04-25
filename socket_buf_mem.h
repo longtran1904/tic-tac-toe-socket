@@ -11,7 +11,6 @@ typedef struct sock_buf_node {
 
 sock_buf_node *create_new_node( int sock );
 
-
-int remove_existing_node( int sock );
+int rm_sock_buf_node( int sock );
 
 sock_buf_node *get_buf_info( int sock );

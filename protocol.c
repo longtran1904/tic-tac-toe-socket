@@ -50,7 +50,7 @@ int play(char** buf, int buf_len, char* name, int length){
     char* code = "PLAY|";
 
     int msg_length = length + (length > 0 ? 1 : 0);
-    printf("msg length: %d\n", msg_length);
+    if (DEBUG) printf("msg length: %d\n", msg_length);
 
     char* numBuf = malloc(sizeof(char));
     int numBuf_len = 1;
@@ -130,11 +130,11 @@ int begin(char** buf, int buf_len, char role, char* name, int length_name){
 }
 int move(char** buf, int buf_len, char role, pair p){
     if (role != 'X' && role != 'O') {
-        printf("Wrong role character");
+        if (DEBUG) printf("Wrong role character");
         return -1;
     }
     if (p.x < 1 || p.x > 3 || p.y < 1 || p.y > 3){
-        printf("position pair out of range [3,3]!");
+        if (DEBUG) printf("position pair out of range [3,3]!");
         return -1;
     }
     char* code = "MOVE|";
@@ -163,11 +163,11 @@ int move(char** buf, int buf_len, char role, pair p){
 
 int move_board(char** buf, int buf_len, char role, pair p, char* board){
     if (role != 'X' && role != 'O') {
-        printf("Wrong role character");
+        if (DEBUG) printf("Wrong role character");
         return -1;
     }
     if (p.x < 1 || p.x > 3 || p.y < 1 || p.y > 3){
-        printf("position pair out of range [3,3]!");
+        if (DEBUG) printf("position pair out of range [3,3]!");
         return -1;
     }
     char* code = "MOVD|";
@@ -291,8 +291,8 @@ int send_message( int sock, char *msg_buf, int msg_len ) {
     // print sending messages
     char *printable_buf = malloc(sizeof(char) * (msg_len + 1));
     memcpy(printable_buf, msg_buf, msg_len);
-    printable_buf[msg_len] = '\0';
-    printf("sending to sock %d| message %s\n", sock, printable_buf);
+    // printable_buf[msg_len] = '\0';
+    // printf("sending to sock %d| message %s\n", sock, printable_buf);
     // print sending messages
 
     int write_bytes = write(sock, msg_buf, msg_len);
@@ -302,7 +302,7 @@ int send_message( int sock, char *msg_buf, int msg_len ) {
 	return -1; // failure
     }
 
-    printf("write %d bytes\n", write_bytes);
+    //printf("write %d bytes\n", write_bytes);
     return 0; // success
 }
 
@@ -408,7 +408,7 @@ void populate_movd(char *fields, int fields_len, message *result) {
     char* printable_fields = malloc(sizeof(char) * (fields_len+1));
     memcpy(printable_fields, fields, fields_len);
     printable_fields[fields_len] = '\0';
-    printf("fields from MOVD |%s\n", printable_fields);
+    if (DEBUG) printf("fields from MOVD |%s\n", printable_fields);
     free(printable_fields);
     // see fields - DELETE WHEN DEPLOY 
 
@@ -604,7 +604,7 @@ char *grab_msg_shift_buf( char *buf, int buf_len, int *msg_size, int *buf_offset
 message *parse_msg(char* msg_inp, int msg_size) {
     msg_info = ALL_GOOD;
 
-    printf("msg_size: %d\n", msg_size);
+    // if (DEBUG) printf("msg_size: %d\n", msg_size);
 
     message *result = malloc( sizeof(message) );
     if ( msg_inp[4] == '|' ) {
@@ -659,6 +659,6 @@ message *parse_msg(char* msg_inp, int msg_size) {
     } // there was an error parsing message into struct
 
     // msg_info when error
-    printf("msg_info: %d\n", msg_info);
+    //if (DEBUG) printf("msg_info: %d\n", msg_info);
     return NULL;
 }

@@ -22,7 +22,9 @@
 #define HOSTSIZE 100
 #define MAX_NUM_OF_GAMES 50
 
-
+#ifndef DEBUG
+    #define DEBUG 0
+#endif
 
 volatile int active = 1;
 
@@ -189,8 +191,11 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 		return -1;
 	    }
 
+	    srand(time(NULL));
+	    int rand_num = rand() > RAND_MAX / 2;
+	    //if (DEBUG) printf("rand_num: %d\n", rand_num ); // either 0 or 1
 	    // determine who goes first / gets role 'X'
-	    if ( ((double)rand() / (double)RAND_MAX) < 0.49 ) {
+	    if ( rand_num == 1 ) {
 		game->sock1_role = 'X';
 		game->sock2_role = 'O';
 		game->up_next = game->sock1;
@@ -247,27 +252,27 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			int moved_len =
 			    move_board(&msg_buf, buf_len, msg_in->role,
 				    msg_in->position, game->board);
-			
-			// debug: TODO-> set debug mode or Delete
-			char* printable_buf = malloc(sizeof(char) * (moved_len+1));
-			memcpy(printable_buf, msg_buf, moved_len);
-			printable_buf[moved_len] = '\0';
-			printf("message length %d | sending message |%s\n", moved_len, printable_buf);
-			printf("Game Board:\n");
-			for (int i = 0; i < 9; i++) printf("%c", game->board[i]);
-			printf("\n");
-			free(printable_buf);
-			// debug: TODO-> set debug mode or Delete
+
+			if (DEBUG) {
+			    char* printable_buf = malloc(sizeof(char) * (moved_len+1));
+			    memcpy(printable_buf, msg_buf, moved_len);
+			    printable_buf[moved_len] = '\0';
+			    printf("message length %d | sending message |%s\n", moved_len, printable_buf);
+			    printf("Game Board:\n");
+			    for (int i = 0; i < 9; i++) printf("%c", game->board[i]);
+			    printf("\n");
+			    free(printable_buf);
+			}
 
 			send_stat = send_message( game->sock1, msg_buf, moved_len);
 			if ( send_stat ) {
 			    free(msg_buf);
 			    return -1;
 			}
-			printf("sent MOVD to sock1 %d!\n", game->sock1);
+			if (DEBUG) printf("sent MOVD to sock1 %d!\n", game->sock1);
 
 			send_stat = send_message( game->sock2, msg_buf, moved_len );
-			printf("sent MOVD to sock2 %d!\n", game->sock2);
+			if (DEBUG) printf("sent MOVD to sock2 %d!\n", game->sock2);
 			free(msg_buf);
 			if ( send_stat ) return -1;
 
@@ -292,10 +297,17 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			send_stat = send_message( sock_loser, msg_buf, over_len );
 			free(msg_buf);
 			if ( send_stat ) return -1;
-			close(game->sock1);
-			close(game->sock2);
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
 			return remove_existing_game( sock );
+
+			//
+			// !!!!!!!!!!!!!!!
+			//
+			// 
+			//TODO: signal both threads to terminate
+			//
+			// !!!!!!!!!!!!!!
+			// 
 		    } // it's a DRAW
 		    else {
 			char *reason = "The grid is full: it's a draw!";
@@ -308,8 +320,6 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			send_stat = send_message( game->sock2, msg_buf, over_len );
 			free(msg_buf);
 			if ( send_stat ) return -1;
-			close(game->sock1);
-			close(game->sock2);
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
 			return remove_existing_game( sock );
 		    }
@@ -337,8 +347,6 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    send_stat = send_message( game->sock2, msg_buf, over_len );
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
-	    close(game->sock1);
-	    close(game->sock2);
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
 	    return remove_existing_game( sock );
 	} // msg_code is "DRAW" and should be 'S' for suggest because we are in state 1
@@ -365,8 +373,6 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    send_stat = send_message( game->sock2, msg_buf, over_len );
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
-	    close(game->sock1);
-	    close(game->sock2);
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
 	    return remove_existing_game( sock );
 	} 
@@ -419,7 +425,7 @@ int message_responder( int sock, message *msg_in ) {
 
     // the message was not expected
     if ( vld_nxt_code == NULL ) {
-	printf("message unexpected!\n");
+	if (DEBUG) printf("message unexpected!\n");
 	msg_info = UNEXPECTED;
 	return send_invld( sock );
     }
@@ -454,12 +460,52 @@ void *read_data( void *arg ){
 
     while (active && (curr->bytes += read(con->fd,
 		    curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
+
 	//curr->buf[curr->bytes] = '\0';
 	//printf("[%s:%s] read %d bytes %s\n", host, port,
 	//	curr->bytes, curr->buf);
-	char *msg_str = grab_msg_shift_buf( curr->buf, curr->bytes, 
-		&msg_size, &curr->buf_offset );
-	if ( msg_str == NULL ) {
+
+	char *msg_str;
+	int respond_stat = 0;
+	int terminate = 0;
+	// in case we recieved 2 or more complete messages
+	while ( (msg_str = grab_msg_shift_buf( curr->buf, curr->bytes, 
+		&msg_size, &curr->buf_offset )) )
+	{
+	    // successfully grabbed message
+	    message *msg_struct = parse_msg( msg_str, msg_size );
+	    if ( msg_struct == NULL ) {
+		free(msg_str);
+		terminate = send_invld( con->fd );
+		if ( terminate ) { // close connection
+		    perror("parse_msg() error");
+		    break;
+		} // try to read again... !!!NOTE: this overrides buf if had > 1 msg
+		curr->bytes = 0;
+		curr->buf_offset = 0;
+		break;
+	    }
+	    // successfully parsed message into struct
+	    // respond to message
+	    respond_stat = message_responder( con->fd, msg_struct );
+	    free(msg_str);
+	    free(msg_struct);
+	    if ( respond_stat ) break;
+	    curr->bytes = curr->buf_offset;
+	    msg_info = ALL_GOOD;
+	    if ( curr->buf_offset == 0 ) {
+		curr->bytes = 0;
+		break;
+	    }
+
+	    //curr->buf[curr->bytes] = '\0';
+	    //printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
+	} 
+
+	// no more complete messages in buf
+	if ( terminate || respond_stat ) break;
+
+	if ( msg_info != ALL_GOOD ) {
 	    if ( msg_info == INCOMPLETE_MSG ) {
 		continue;
 	    } // corrupted message: break and close socket
@@ -467,29 +513,7 @@ void *read_data( void *arg ){
 		perror("grab_msg_shift_buf() error");
 		break;
 	    }
-	} // successfully grabbed message
-	//curr->buf[curr->bytes] = '\0';
-
-	message *msg_struct = parse_msg( msg_str, msg_size );
-	if ( msg_struct == NULL ) {
-	    free(msg_str);
-	    int terminate = send_invld( con->fd );
-	    if ( terminate ) { // close connection
-		perror("parse_msg() error");
-		break;
-	    } // try to read again... !!!NOTE: this overrides buf if had > 1 msg
-	    curr->bytes = 0;
-	    continue;
 	}
-	// successfully parsed message into struct
-	// respond to message
-	int respond_err = message_responder( con->fd, msg_struct );
-	free(msg_str);
-	free(msg_struct);
-	if ( respond_err ) break;
-	if ( curr->buf_offset == 0 ) curr->bytes = 0;
-	curr->buf[curr->bytes] = '\0';
-	//printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
     }
 
     if (curr->bytes == 0){
@@ -502,7 +526,7 @@ void *read_data( void *arg ){
 
     close(con->fd);
 
-    remove_existing_node( con->fd );
+    rm_sock_buf_node( con->fd );
 
     free(con);
 
