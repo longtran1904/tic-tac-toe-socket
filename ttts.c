@@ -26,7 +26,7 @@
     #define DEBUG 0
 #endif
 
-int is_active[13000] = { 0 };
+int is_active[13000][2] = { 0 };
 
 volatile int active = 1;
 
@@ -127,6 +127,11 @@ int send_invld( int sock ) {
 	    invalid_len = invalid(&msg_buf, buf_len,\
 		    "Invalid name: cannot exceed 100 chars or contain a bar!", 55);
 	    break;
+	case NAME_TAKEN: 
+	    // generate INVLD message 
+	    invalid_len = invalid(&msg_buf, buf_len,\
+		    "Invalid name: name already taken, please choose a different one!", 64);
+	    break;
 	case BAD_ROLE_FLD:
 	    invalid_len = invalid(&msg_buf, buf_len,\
 		    "Invalid role: must be 'X' or 'O'!", 33);
@@ -164,6 +169,20 @@ int send_invld( int sock ) {
     return send_stat;
 }
 
+// applies mutex lock to name-containing data-structure and checks if name is unique
+// returns 1 if is unique, 0 otherwise
+// before returning unlocks name-containing data-structure
+int name_is_unique( char *name, int name_len ) {
+    char name_str[name_len+1];
+    memcpy(name_str, name, name_len);
+    name_str[name_len] = '\0';
+
+    //TODO
+    //...
+
+    return 1;
+}
+
 int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
     char *msg_buf = malloc(sizeof(char));
     int buf_len = 1, send_stat;
@@ -179,6 +198,10 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	// game was just initiated with this one player
 	if ( sock == game->sock1 ) {
 	    // send WAIT to player1
+	    if ( !name_is_unique( msg_in->name, msg_in->name_len ) ) { 
+		msg_info = NAME_TAKEN;
+		return ( send_invld( sock ) ) ? -1 : 1;
+	    }
 	    strcpy(game->sock1_name, msg_in->name);
 	    game->sock1_name_len = msg_in->name_len;
 	    send_stat = send_message( sock, msg_buf, wait_len );
@@ -188,6 +211,8 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    return 0;
 	} // game has a second player!
 	else {
+	    is_active[game->sock1][1] = sock; // update pairing in is_active
+	    is_active[sock][1] = game->sock1; // update pairing in is_active
 	    game->sock2 = sock;
 	    strcpy(game->sock2_name, msg_in->name);
 	    game->sock2_name_len = msg_in->name_len;
@@ -305,8 +330,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			free(msg_buf);
 			if ( send_stat ) return -1;
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
-			is_active[game->sock1] = 0;
-			is_active[game->sock2] = 0;
+			is_active[sock][0] = 0; // mark socket as inactive
 			return remove_existing_game( sock );
 
 			//
@@ -330,8 +354,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 			free(msg_buf);
 			if ( send_stat ) return -1;
 			printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
-			is_active[game->sock1] = 0;
-			is_active[game->sock2] = 0;
+			is_active[sock][0] = 0; // mark socket as inactive
 			return remove_existing_game( sock );
 		    }
 		} // position already taken
@@ -359,8 +382,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
-	    is_active[game->sock1] = 0;
-	    is_active[game->sock2] = 0;
+	    is_active[sock][0] = 0; // mark socket as inactive
 	    return remove_existing_game( sock );
 	} // msg_code is "DRAW" and should be 'S' for suggest because we are in state 1
 	else {
@@ -387,8 +409,7 @@ int update_state_send_msg( int sock, message *msg_in, game_node *game ) {
 	    free(msg_buf);
 	    if ( send_stat ) return -1;
 	    printf("Terminating game between \'%s\' and \'%s\'!\n", game->sock1_name, game->sock2_name);
-	    is_active[game->sock1] = 0;
-	    is_active[game->sock2] = 0;
+	    is_active[sock][0] = 0; // mark socket as inactive
 	    return remove_existing_game( sock );
 	} 
 	else if ( msg_in->msg == 'R' ) {
@@ -473,7 +494,7 @@ void *read_data( void *arg ){
 
     printf("Connection from %s:%s\n", host, port);
 
-    while (active /*&& is_active[con->fd] */  && 
+    while (active && is_active[con->fd][0] && 
 	    (curr->bytes += read(con->fd, curr->buf+curr->buf_offset, BUFSIZE-curr->buf_offset))) {
 
 	//curr->buf[curr->bytes] = '\0';
@@ -493,7 +514,6 @@ void *read_data( void *arg ){
 		free(msg_str);
 		terminate = send_invld( con->fd );
 		if ( terminate ) { // close connection
-		    printf("terminating because send_invld\n");
 		    perror("parse_msg() error");
 		    break;
 		} // try to read again... !!!NOTE: this overrides buf if had > 1 msg
@@ -517,9 +537,23 @@ void *read_data( void *arg ){
 	    //curr->buf[curr->bytes] = '\0';
 	    //printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
 	} 
-
 	// no more complete messages in buf
-	if ( terminate || respond_stat ) break;
+	
+	if ( terminate ) {
+	    printf("terminating because send_invld() said so\n");
+	    break;
+	}
+
+	if ( respond_stat == 1 ) {
+	    // reset buf to receive new message: giving client another chance
+	    curr->bytes = 0;
+	    curr->buf_offset = 0;
+	    continue;
+	}
+	else if ( respond_stat ) {
+	    printf("terminating because of response error\n"); 
+	    break;
+	}
 
 	if ( msg_info != BAD_FORMAT ) {
 	    if ( msg_info == INCOMPLETE_MSG ) {
@@ -552,8 +586,27 @@ void *read_data( void *arg ){
 	printf("[%s:%s] terminating\n", host, port);
     }
 
-    printf("closing socket: %d\n", con->fd);
-    close(con->fd);
+    int sock_partner = is_active[con->fd][1];
+    if ( sock_partner ) { // if sock is the first player in a game to break connection i.e. still has a partner
+	printf("closing socket: %d\n", con->fd);
+	close(con->fd);
+	printf("closing partner socket: %d\n", sock_partner);
+	close(sock_partner);
+
+	// update socket status to inactive 
+	is_active[con->fd][0] = 0;
+	is_active[con->fd][1] = 0;
+
+	// update socket status of partner to inactive 
+	is_active[sock_partner][0] = 0;
+	is_active[sock_partner][1] = 0;
+    } // has no partner and is active
+    else if ( is_active[con->fd][0] ) {
+	printf("closing socket: %d\n", con->fd);
+	close(con->fd);
+	is_active[con->fd][0] = 0;
+	is_active[con->fd][1] = 0;
+    }
 
     rm_sock_buf_node( con->fd );
 
@@ -602,7 +655,8 @@ int main(int argc, char ** argv){
 	    exit(EXIT_FAILURE);
 	}
 
-	is_active[con->fd] = 1;
+	is_active[con->fd][0] = 1; // means socket is active
+	is_active[con->fd][1] = 0; // means socket has no partner
 
 	error = pthread_create(&tid, NULL, read_data, con);
 	if (error != 0) {

@@ -512,6 +512,7 @@ char *get_msg_info_str( message_information stat ) {
 	case BAD_SIZE_FLD: return "BAD_SIZE_FLD";
 	case BAD_CODE_FLD: return "BAD_CODE_FLD";
 	case BAD_NAME_FLD: return "BAD_NAME_FLD";
+	case NAME_TAKEN: return "NAME_TAKEN";
 	case BAD_ROLE_FLD: return "BAD_ROLE_FLD";
 	case BAD_POSITION_FLD: return "BAD_POSITION_FLD";
 	case BAD_BOARD_FLD: return "BAD_BOARD_FLD";

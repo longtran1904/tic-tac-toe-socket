@@ -27,6 +27,7 @@ typedef enum {
     BAD_SIZE_FLD,
     BAD_CODE_FLD,
     BAD_NAME_FLD,
+    NAME_TAKEN,
     BAD_ROLE_FLD,
     BAD_POSITION_FLD,
     BAD_BOARD_FLD,

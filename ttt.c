@@ -150,6 +150,7 @@ int message_responder( int sock, message *msg_in ) {
 	}
     }
     else if ( strcmp(msg_code, "INVL") == 0 ) {
+	printf("%s\n", msg_in->reason);
 	message_responder( sock, prev_msg_in );
 	return 0;
     }
