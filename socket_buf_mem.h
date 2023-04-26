@@ -8,6 +8,7 @@ typedef struct sock_buf_node {
     struct sock_buf_node *next;
 } sock_buf_node;
 
+void sock_buf_init();
 
 sock_buf_node *create_new_node( int sock );
 

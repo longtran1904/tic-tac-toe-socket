@@ -449,7 +449,9 @@ int message_responder( int sock, message *msg_in ) {
 	return send_invld( sock );
     }
     // the message is expected
-    return update_state_send_msg( sock, msg_in, game );
+	int stat = update_state_send_msg( sock, msg_in, game );
+	set_game(game); // free lock of this game_node
+    return stat;
 }
 
 void *read_data( void *arg ){
@@ -517,8 +519,8 @@ void *read_data( void *arg ){
 		break;
 	    }
 
-	    //curr->buf[curr->bytes] = '\0';
-	    //printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
+	    // curr->buf[curr->bytes] = '\0';
+	    // printf("bytes: %d\n buf_offset: %d\n buf: %s\n", curr->bytes, curr->buf_offset, curr->buf);
 	} 
 	// no more complete messages in buf
 	
@@ -613,6 +615,10 @@ int main(int argc, char ** argv){
     if (listener < 0) exit(EXIT_FAILURE);
 
     printf("Listening for incoming connections on %s\n", service);
+
+	// initialize global data structs and mutex locks for them
+	game_list_init();
+	sock_buf_init();
 
     while (active) {
 	con = (struct connection_data *)malloc(sizeof(struct connection_data));
