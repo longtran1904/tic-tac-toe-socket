@@ -30,30 +30,32 @@ Implemented in C using standard libraries: socket, pthread, pthread_mutex.
   - Each user connection to server will create its own thread on server
   - Data Structures:
     - Linked List: for controlling states of games
-      typedef struct game_node {
-      int sock1;
-      char sock1_name[101];
-      int sock1_name_len;
-      char sock1_role;
-      int sock2;
-      char sock2_name[101];
-      int sock2_name_len;
-      char sock2_role;
-      int up_next; // value of sock1 or sock2 
-      int server_state; // 0, 1, or 2
-      char board[9];
-      pthread_mutex_t lock;
-      struct game_node *next_game;
-      } game_node;
+
+          typedef struct game_node {
+          int sock1;
+          char sock1_name[101];
+          int sock1_name_len;
+          char sock1_role;
+          int sock2;
+          char sock2_name[101];
+          int sock2_name_len;
+          char sock2_role;
+          int up_next; // value of sock1 or sock2 
+          int server_state; // 0, 1, or 2
+          char board[9];
+          pthread_mutex_t lock;
+          struct game_node *next_game;
+          } game_node;
 
     - Linked List: for controlling buffers for each socket/user
-      typedef struct sock_buf_node {
-      int sock;
-      char *buf;
-      int bytes;
-      int buf_offset;
-      struct sock_buf_node *next;
-      } sock_buf_node;
+
+          typedef struct sock_buf_node {
+          int sock;
+          char *buf;
+          int bytes;
+          int buf_offset;
+          struct sock_buf_node *next;
+          } sock_buf_node;
 
     - Use of locks for multi-threading:
       - Every response to a message from client will block the game_node the client is using.
@@ -72,15 +74,15 @@ Implemented in C using standard libraries: socket, pthread, pthread_mutex.
     - Before client receives BEGN message
     - Messages allowed: PLAY
     - if client send any messages beside PLAY, server detects that as non valid message at this phase.
-    MOVE|6|X|2,2|
-    Expected: INVL|{msg size}|Message not expected at this time!|
+      ***Input***: MOVE|6|X|2,2|
+      ***Expected***: INVL|{msg size}|Message not expected at this time!|
 
   - After matching phase:
     - After client receives BEGN message
     - Messages allowed: MOVE, RSGN, DRAW
     - if client send PLAY:
-    PLAY|{msg size}|{name}|
-    Expected: INVL|{msg size}|Message not expected at this time!|
+      ***Input***: PLAY|{msg size}|{name}|
+      ***Expected***: INVL|{msg size}|Message not expected at this time!|
 
   - If a client send a message when it's not his turn, server will send back: `INVL|35|Message not expected at this time!|`
 
@@ -98,7 +100,7 @@ Implemented in C using standard libraries: socket, pthread, pthread_mutex.
 
 #### Concurrent Game Testing
   - Play 3 concurrent games at a time without crashing the server.
-  - Expecting: 3 games play as normal.
+  - ***Expecting***: 3 games play as normal.
 
   - Playing 3 concurrent games. Have 1 client to terminate program
-  - Expecting: only game that client plays will be terminated
+  - ***Expecting***: only game that client plays will be terminated
